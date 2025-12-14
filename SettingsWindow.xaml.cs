@@ -35,6 +35,10 @@ namespace Imel
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
             IntervalValueText.Text = _mainWindow.SettingUpdateInterval.ToString();
 
+            // サイズ倍率 (New)
+            ScaleSlider.Value = _mainWindow.SettingScale;
+            ScaleValueText.Text = _mainWindow.SettingScale.ToString("F1");
+
             // 文字色
             SetRGBInputs(TextR, TextG, TextB, _mainWindow.SettingTextColor);
             UpdateComboFromColor(TextColorCombo, _mainWindow.SettingTextColor, true);
@@ -65,6 +69,15 @@ namespace Imel
             int val = (int)e.NewValue;
             _mainWindow.SettingUpdateInterval = val;
             if (IntervalValueText != null) IntervalValueText.Text = val.ToString();
+        }
+
+        // サイズ倍率変更 (New)
+        private void ScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (!_isInitialized) return;
+            double val = Math.Round(e.NewValue, 1);
+            _mainWindow.SettingScale = val;
+            if (ScaleValueText != null) ScaleValueText.Text = val.ToString("F1");
         }
 
         // --- スタートアップ設定 ---

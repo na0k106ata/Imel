@@ -13,13 +13,15 @@ namespace Imel
         public int OffsetX { get; set; } = 10;
         public int OffsetY { get; set; } = 10;
         public int Opacity { get; set; } = 67;
-        public int UpdateInterval { get; set; } = 10; // デフォルト10ms
+        public int UpdateInterval { get; set; } = 10;
+
+        // 表示サイズ倍率 (New: デフォルト 1.0)
+        public double Scale { get; set; } = 1.0;
 
         // --- 動作設定 ---
-        // マウスカーソルが非表示の時（動画視聴中など）に自動で隠すか
         public bool HideWhenCursorHidden { get; set; } = true;
 
-        // --- 色設定 (RGB値を個別に保存) ---
+        // --- 色設定 ---
         public byte TextR { get; set; } = 255;
         public byte TextG { get; set; } = 255;
         public byte TextB { get; set; } = 255;
@@ -73,7 +75,7 @@ namespace Imel
                     if (settings != null) return settings;
                 }
             }
-            catch { /* 読み込み失敗時は無視 */ }
+            catch { /* 読み込み失敗時は無視してデフォルトを返す */ }
 
             return new AppSettings();
         }

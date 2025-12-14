@@ -28,8 +28,21 @@
         </Grid>
         <Slider Name="IntervalSlider" Minimum="2" Maximum="100" Value="10"
                 TickFrequency="1" IsSnapToTickEnabled="True"
-                ValueChanged="IntervalSlider_ValueChanged" Margin="0,0,0,15"
+                ValueChanged="IntervalSlider_ValueChanged" Margin="0,0,0,10"
                 ToolTip="マウス追従の滑らかさを調整します (推奨: 5-15ms)"/>
+
+        <!-- 表示サイズ設定 (New) -->
+        <Grid Margin="0,0,0,2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="表示サイズ (倍率)" FontSize="11" VerticalAlignment="Center"/>
+            <TextBlock Name="ScaleValueText" Text="1.0" Grid.Column="1" FontSize="11" FontWeight="Bold"/>
+        </Grid>
+        <Slider Name="ScaleSlider" Minimum="0.5" Maximum="2.0" Value="1.0"
+                TickFrequency="0.1" IsSnapToTickEnabled="True"
+                ValueChanged="ScaleSlider_ValueChanged" Margin="0,0,0,15"/>
 
         <!-- 文字色設定 -->
         <TextBlock Text="文字色" FontSize="11" FontWeight="Bold" Foreground="#555" Margin="0,0,0,5"/>
