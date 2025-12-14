@@ -12,6 +12,11 @@ using Drawing = System.Drawing;
 
 namespace Imel
 {
+    /// <summary>
+    /// アプリケーションのメインロジック。
+    /// 透明なオーバーレイウィンドウを制御し、アクティブウィンドウのIME状態監視、
+    /// マウスカーソル位置追従、タスクトレイアイコンの管理を行います。
+    /// </summary>
     public partial class MainWindow : Window
     {
         #region Fields
@@ -36,12 +41,14 @@ namespace Imel
 
         #region Properties (Settings)
 
+        // 位置調整用オフセット
         public int SettingOffsetX { get; set; } = 10;
         public int SettingOffsetY { get; set; } = 10;
 
         // カーソル非表示時の連動設定
         public bool SettingHideWhenCursorHidden { get; set; } = true;
 
+        // 更新間隔（描画頻度）
         private int _settingUpdateInterval = 10;
         public int SettingUpdateInterval
         {
@@ -131,7 +138,7 @@ namespace Imel
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 初期位置を画面外へ
+            // 初期位置を画面外へ（チラつき防止）
             this.Left = -100;
             this.Top = -100;
 
@@ -348,9 +355,10 @@ namespace Imel
             }
 
             // 4. 位置更新 (毎フレーム実行して滑らかに追従)
+            // 以前あったキャレット判定は削除され、常にマウス追従のみ行います
             if (this.Visibility == Visibility.Visible)
             {
-                UpdatePosition(hwndForeground, threadId);
+                UpdatePosition();
             }
 
             // 5. メモリ解放 (定期的実行)
@@ -442,41 +450,15 @@ namespace Imel
             }
         }
 
-        private void UpdatePosition(IntPtr hwnd, uint threadId)
+        // マウス位置に追従してウィンドウを移動
+        private void UpdatePosition()
         {
-            GUITHREADINFO guiInfo = new GUITHREADINFO();
-            guiInfo.cbSize = (uint)Marshal.SizeOf(guiInfo);
-            bool caretFound = false;
-
-            // キャレット位置取得試行
-            if (GetGUIThreadInfo(threadId, ref guiInfo))
-            {
-                if (guiInfo.rcCaret.right > 0 && guiInfo.rcCaret.bottom > 0)
-                {
-                    POINT pt = new POINT { X = guiInfo.rcCaret.left, Y = guiInfo.rcCaret.bottom };
-                    ClientToScreen(guiInfo.hwndCaret, ref pt);
-                    if (pt.X > 0 && pt.Y > 0)
-                    {
-                        // キャッシュ済みDPIを使用
-                        this.Left = (pt.X / _dpiX) + SettingOffsetX;
-                        this.Top = (pt.Y / _dpiY) + SettingOffsetY;
-                        caretFound = true;
-                    }
-                }
-            }
-
-            // フォールバック（マウス追従）
-            if (!caretFound)
-            {
-                GetCursorPos(out POINT mousePt);
-                this.Left = (mousePt.X / _dpiX) + SettingOffsetX + 5;
-                this.Top = (mousePt.Y / _dpiY) + SettingOffsetY + 5;
-            }
+            GetCursorPos(out POINT mousePt);
+            // キャッシュ済みDPIと設定されたオフセットを使用
+            this.Left = (mousePt.X / _dpiX) + SettingOffsetX + 5;
+            this.Top = (mousePt.Y / _dpiY) + SettingOffsetY + 5;
         }
 
-        /// <summary>
-        /// 不要なメモリを解放し、ワーキングセットを縮小します。
-        /// </summary>
         public void MinimizeFootprint()
         {
             try
@@ -510,8 +492,6 @@ namespace Imel
         [DllImport("imm32.dll")] static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
         [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
         [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
-        [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-        [DllImport("user32.dll")] static extern bool ClientToScreen(IntPtr hWnd, ref POINT lpPoint);
         [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
 
         const int IME_CMODE_NATIVE = 0x0001;
@@ -521,8 +501,6 @@ namespace Imel
         const int CURSOR_SHOWING = 0x00000001;
 
         [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
-        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int left; public int top; public int right; public int bottom; }
-        [StructLayout(LayoutKind.Sequential)] public struct GUITHREADINFO { public uint cbSize; public uint flags; public IntPtr hwndActive; public IntPtr hwndFocus; public IntPtr hwndCapture; public IntPtr hwndMenuOwner; public IntPtr hwndMoveSize; public IntPtr hwndCaret; public RECT rcCaret; }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct CURSORINFO

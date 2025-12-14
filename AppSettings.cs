@@ -13,7 +13,7 @@ namespace Imel
         public int OffsetX { get; set; } = 10;
         public int OffsetY { get; set; } = 10;
         public int Opacity { get; set; } = 67;
-        public int UpdateInterval { get; set; } = 10;
+        public int UpdateInterval { get; set; } = 10; // デフォルト10ms
 
         // --- 動作設定 ---
         // マウスカーソルが非表示の時（動画視聴中など）に自動で隠すか
@@ -29,7 +29,7 @@ namespace Imel
         public byte BgB { get; set; } = 0;
 
         /// <summary>
-        /// 設定ファイルのパスを取得します。 (AppData/Roaming/Imel/settings.json)
+        /// 設定ファイルのパスを取得します。(AppData/Roaming/Imel/settings.json)
         /// </summary>
         private static string GetConfigPath()
         {
@@ -55,7 +55,7 @@ namespace Imel
                 string jsonString = JsonSerializer.Serialize(settings, options);
                 File.WriteAllText(GetConfigPath(), jsonString);
             }
-            catch { /* 保存失敗時は無視 */ }
+            catch { /* 保存失敗時は無視（ユーザー操作を阻害しないため） */ }
         }
 
         /// <summary>

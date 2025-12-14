@@ -28,7 +28,7 @@ namespace Imel
             // スタートアップ
             StartupCheckBox.IsChecked = IsStartupEnabled();
 
-            // 新設定: カーソル連動
+            // カーソル連動
             HideCursorCheckBox.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
 
             // 更新頻度
