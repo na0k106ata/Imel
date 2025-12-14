@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWPF>true</UseWPF>
+		<!-- タスクトレイ機能(NotifyIcon)を利用するためにWinFormsを有効化 -->
+		<UseWindowsForms>true</UseWindowsForms>
+		<!-- 高DPI環境での表示崩れを防止 -->
+		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+		<Platforms>AnyCPU;x64;ARM64</Platforms>
+		<AssemblyName>Imel</AssemblyName>
+		<RootNamespace>Imel</RootNamespace>
+		<!-- アプリケーションのアイコン設定 -->
+		<ApplicationIcon>Imel.ico</ApplicationIcon>
+	</PropertyGroup>
+
+	<!-- アイコンをプログラム内からストリームとして読み込めるように埋め込みリソース化 -->
+	<ItemGroup>
+		<EmbeddedResource Include="Imel.ico" />
+	</ItemGroup>
+
+</Project>
