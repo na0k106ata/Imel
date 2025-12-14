@@ -12,11 +12,11 @@
         IsHitTestVisible="False">
 
     <!-- 
-      重要プロパティの解説:
-      - WindowStyle="None", AllowsTransparency="True": 枠なし透明ウィンドウを実現
-      - Topmost="True": 常に最前面に表示
-      - IsHitTestVisible="False": マウスイベントを透過させ、背面のアプリを操作可能にする
-      - ShowInTaskbar="False": タスクバーに表示しない
+      重要プロパティ:
+      - WindowStyle="None", AllowsTransparency="True": 枠なし透明ウィンドウ
+      - Topmost="True": 常に最前面
+      - IsHitTestVisible="False": クリックを透過（操作を阻害しない）
+      - ShowInTaskbar="False": タスクバー非表示
     -->
 
     <Border x:Name="MainBorder" CornerRadius="5" Background="#AA000000" Padding="2">

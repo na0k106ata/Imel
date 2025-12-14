@@ -432,7 +432,7 @@ namespace Imel
                 }
 
                 // --- 表示テキストの決定ロジック ---
-                string statusText = "_A"; // デフォルトは半角英数扱い
+                string statusText = "_A"; // デフォルト: 半角英数 (アンダーバー付き)
 
                 if (statusRetrieved && isImeOpen)
                 {

@@ -55,7 +55,7 @@ namespace Imel
                 string jsonString = JsonSerializer.Serialize(settings, options);
                 File.WriteAllText(GetConfigPath(), jsonString);
             }
-            catch { /* 保存失敗時は無視（ユーザー操作を阻害しないため） */ }
+            catch { /* 保存失敗時は無視 */ }
         }
 
         /// <summary>
@@ -73,7 +73,7 @@ namespace Imel
                     if (settings != null) return settings;
                 }
             }
-            catch { /* 読み込み失敗時は無視してデフォルトを返す */ }
+            catch { /* 読み込み失敗時は無視 */ }
 
             return new AppSettings();
         }
