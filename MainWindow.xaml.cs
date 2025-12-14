@@ -12,11 +12,6 @@ using Drawing = System.Drawing;
 
 namespace Imel
 {
-    /// <summary>
-    /// アプリケーションのメインロジック。
-    /// 透明なオーバーレイウィンドウを制御し、アクティブウィンドウのIME状態監視、
-    /// マウスカーソル位置追従、タスクトレイアイコンの管理を行います。
-    /// </summary>
     public partial class MainWindow : Window
     {
         #region Fields
@@ -25,17 +20,19 @@ namespace Imel
         private Forms.NotifyIcon _notifyIcon = null!;
         private ImageSource? _cachedIcon = null;
 
-        // 処理頻度の制御用
         private DateTime _lastImeCheckTime = DateTime.MinValue;
         private const double ImeCheckInterval = 100.0;
 
         private DateTime _lastMemoryCleanupTime = DateTime.MinValue;
         private const double MemoryCleanupInterval = 30000.0;
 
-        // パフォーマンス最適化用キャッシュ
         private double _dpiX = 1.0;
         private double _dpiY = 1.0;
         private IntPtr _thisProcessHandle;
+
+        // 基準サイズ定数 (New)
+        private const double BaseSize = 24.0;
+        private const double BaseFontSize = 13.0;
 
         #endregion
 
@@ -44,6 +41,18 @@ namespace Imel
         public int SettingOffsetX { get; set; } = 10;
         public int SettingOffsetY { get; set; } = 10;
         public bool SettingHideWhenCursorHidden { get; set; } = true;
+
+        // 表示サイズ倍率 (New)
+        private double _settingScale = 1.0;
+        public double SettingScale
+        {
+            get => _settingScale;
+            set
+            {
+                _settingScale = Math.Clamp(value, 0.5, 2.0);
+                UpdateWindowSize(); // サイズ変更を即時反映
+            }
+        }
 
         private int _settingUpdateInterval = 10;
         public int SettingUpdateInterval
@@ -117,7 +126,6 @@ namespace Imel
                 ImeStatusText.Foreground = new SolidColorBrush(SettingTextColor);
 
             InitializeNotifyIcon();
-
             CacheAppIcon();
 
             _timer = new DispatcherTimer();
@@ -130,17 +138,14 @@ namespace Imel
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 初期位置を画面外へ
             this.Left = -100;
             this.Top = -100;
 
-            // 【重要】タスクマネージャーの「アプリ」欄から隠す処理
             // ウィンドウを「ツールウィンドウ」として定義し、タスクスイッチャー等から除外する
             var helper = new WindowInteropHelper(this);
             int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
             SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
 
-            // DPI情報の初期取得
             var source = PresentationSource.FromVisual(this);
             if (source != null && source.CompositionTarget != null)
             {
@@ -199,6 +204,8 @@ namespace Imel
             this.SettingOpacity = settings.Opacity;
             this.SettingUpdateInterval = settings.UpdateInterval;
             this.SettingHideWhenCursorHidden = settings.HideWhenCursorHidden;
+            this.SettingScale = settings.Scale; // 倍率ロード
+
             this.SettingTextColor = Color.FromRgb(settings.TextR, settings.TextG, settings.TextB);
             this.SettingBackgroundColor = Color.FromRgb(settings.BgR, settings.BgG, settings.BgB);
         }
@@ -212,6 +219,8 @@ namespace Imel
                 Opacity = this.SettingOpacity,
                 UpdateInterval = this.SettingUpdateInterval,
                 HideWhenCursorHidden = this.SettingHideWhenCursorHidden,
+                Scale = this.SettingScale, // 倍率保存
+
                 TextR = this.SettingTextColor.R,
                 TextG = this.SettingTextColor.G,
                 TextB = this.SettingTextColor.B,
@@ -220,6 +229,18 @@ namespace Imel
                 BgB = this.SettingBackgroundColor.B
             };
             AppSettings.Save(settings);
+        }
+
+        // ウィンドウサイズとフォントサイズを倍率に合わせて更新 (New)
+        private void UpdateWindowSize()
+        {
+            this.Width = BaseSize * SettingScale;
+            this.Height = BaseSize * SettingScale;
+
+            if (ImeStatusText != null)
+            {
+                ImeStatusText.FontSize = BaseFontSize * SettingScale;
+            }
         }
 
         private void UpdateBackgroundBrush()
@@ -238,6 +259,8 @@ namespace Imel
             SettingOffsetY = 10;
             SettingUpdateInterval = 10;
             SettingHideWhenCursorHidden = true;
+            SettingScale = 1.0; // デフォルト倍率
+
             SettingTextColor = Colors.White;
             SettingBackgroundColor = Colors.Black;
             SettingOpacity = 67;
@@ -412,7 +435,6 @@ namespace Imel
                 {
                     if ((conversionMode & IME_CMODE_NATIVE) != 0)
                     {
-                        // 日本語
                         if ((conversionMode & IME_CMODE_KATAKANA) != 0)
                         {
                             statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
@@ -424,7 +446,6 @@ namespace Imel
                     }
                     else
                     {
-                        // 英数
                         if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
                         {
                             statusText = "Ａ";
@@ -479,7 +500,6 @@ namespace Imel
 
         #region Win32 API Definitions
 
-        // ウィンドウの拡張スタイル変更用 (New)
         [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         private const int GWL_EXSTYLE = -20;
