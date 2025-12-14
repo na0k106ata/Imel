@@ -329,7 +329,6 @@ namespace Imel
         private void ProcessUpdate()
         {
             // 1. カーソル可視チェック
-            // 動画視聴中などでOSがカーソルを隠している場合、Imelも隠す
             if (SettingHideWhenCursorHidden && !IsCursorVisible())
             {
                 this.Visibility = Visibility.Hidden;
@@ -355,7 +354,6 @@ namespace Imel
             }
 
             // 4. 位置更新 (毎フレーム実行して滑らかに追従)
-            // 以前あったキャレット判定は削除され、常にマウス追従のみ行います
             if (this.Visibility == Visibility.Visible)
             {
                 UpdatePosition();
@@ -397,7 +395,7 @@ namespace Imel
                 if (hwndFocus == IntPtr.Zero) hwndFocus = hwndForeground;
 
                 bool isImeOpen = false;
-                bool isNative = false;
+                int conversionMode = 0;
                 bool statusRetrieved = false;
 
                 // 4-A. ImmGetContext (レガシー)
@@ -407,10 +405,9 @@ namespace Imel
                     try
                     {
                         isImeOpen = ImmGetOpenStatus(hImc);
-                        int conversionMode = 0, sentenceMode = 0;
+                        int sentenceMode = 0;
                         if (ImmGetConversionStatus(hImc, out conversionMode, out sentenceMode))
                         {
-                            isNative = (conversionMode & IME_CMODE_NATIVE) != 0;
                             statusRetrieved = true;
                         }
                     }
@@ -428,13 +425,49 @@ namespace Imel
                         if (isImeOpen)
                         {
                             IntPtr convMode = SendMessage(hImeWnd, WM_IME_CONTROL, (IntPtr)IMC_GETCONVERSIONMODE, IntPtr.Zero);
-                            isNative = (convMode.ToInt32() & IME_CMODE_NATIVE) != 0;
+                            conversionMode = convMode.ToInt32();
                         }
                         statusRetrieved = true;
                     }
                 }
 
-                string statusText = (statusRetrieved && isImeOpen && isNative) ? "あ" : "A";
+                // --- 表示テキストの決定ロジック ---
+                string statusText = "_A"; // デフォルトは半角英数扱い
+
+                if (statusRetrieved && isImeOpen)
+                {
+                    if ((conversionMode & IME_CMODE_NATIVE) != 0)
+                    {
+                        // 日本語入力モード
+                        if ((conversionMode & IME_CMODE_KATAKANA) != 0)
+                        {
+                            // カタカナモード
+                            statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
+                        }
+                        else
+                        {
+                            // ひらがなモード
+                            statusText = "あ";
+                        }
+                    }
+                    else
+                    {
+                        // 英数モード（IME ON）
+                        if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
+                        {
+                            statusText = "Ａ"; // 全角英数
+                        }
+                        else
+                        {
+                            statusText = "_A"; // 半角英数
+                        }
+                    }
+                }
+                else
+                {
+                    // IME OFF
+                    statusText = "_A";
+                }
 
                 // 【最適化】値が変わったときのみUI更新
                 if (ImeStatusText.Text != statusText)
@@ -492,9 +525,12 @@ namespace Imel
         [DllImport("imm32.dll")] static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
         [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
         [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
         [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
 
         const int IME_CMODE_NATIVE = 0x0001;
+        const int IME_CMODE_KATAKANA = 0x0002;
+        const int IME_CMODE_FULLSHAPE = 0x0008;
         const int WM_IME_CONTROL = 0x0283;
         const int IMC_GETOPENSTATUS = 0x0005;
         const int IMC_GETCONVERSIONMODE = 0x0001;
