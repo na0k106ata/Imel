@@ -25,12 +25,12 @@ namespace Imel
         private Forms.NotifyIcon _notifyIcon = null!;
         private ImageSource? _cachedIcon = null;
 
-        // 処理頻度の制御用（負荷軽減）
+        // 処理頻度の制御用
         private DateTime _lastImeCheckTime = DateTime.MinValue;
-        private const double ImeCheckInterval = 100.0; // IME状態確認は100ms間隔
+        private const double ImeCheckInterval = 100.0;
 
         private DateTime _lastMemoryCleanupTime = DateTime.MinValue;
-        private const double MemoryCleanupInterval = 30000.0; // メモリ解放は30秒間隔
+        private const double MemoryCleanupInterval = 30000.0;
 
         // パフォーマンス最適化用キャッシュ
         private double _dpiX = 1.0;
@@ -41,21 +41,16 @@ namespace Imel
 
         #region Properties (Settings)
 
-        // 位置調整用オフセット
         public int SettingOffsetX { get; set; } = 10;
         public int SettingOffsetY { get; set; } = 10;
-
-        // カーソル非表示時の連動設定
         public bool SettingHideWhenCursorHidden { get; set; } = true;
 
-        // 更新間隔（描画頻度）
         private int _settingUpdateInterval = 10;
         public int SettingUpdateInterval
         {
             get => _settingUpdateInterval;
             set
             {
-                // 2ms~100msの範囲に制限
                 _settingUpdateInterval = Math.Clamp(value, 2, 100);
                 if (_timer != null)
                 {
@@ -106,12 +101,10 @@ namespace Imel
 
         public MainWindow()
         {
-            // 【メモリ対策】GPU描画を無効化しソフトウェア描画のみにする
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
             InitializeComponent();
 
-            // プロセスハンドルをキャッシュ（メモリ解放用）
             using (var proc = Process.GetCurrentProcess())
             {
                 _thisProcessHandle = proc.Handle;
@@ -125,7 +118,6 @@ namespace Imel
 
             InitializeNotifyIcon();
 
-            // アイコン画像をキャッシュしてGDIリソース漏れを防ぐ
             CacheAppIcon();
 
             _timer = new DispatcherTimer();
@@ -138,9 +130,15 @@ namespace Imel
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 初期位置を画面外へ（チラつき防止）
+            // 初期位置を画面外へ
             this.Left = -100;
             this.Top = -100;
+
+            // 【重要】タスクマネージャーの「アプリ」欄から隠す処理
+            // ウィンドウを「ツールウィンドウ」として定義し、タスクスイッチャー等から除外する
+            var helper = new WindowInteropHelper(this);
+            int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+            SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
 
             // DPI情報の初期取得
             var source = PresentationSource.FromVisual(this);
@@ -152,7 +150,6 @@ namespace Imel
 
             _timer.Start();
 
-            // 【メモリ対策】起動直後の初期化メモリゴミを掃除するため、少し遅延させて解放実行
             await Task.Delay(2000);
             MinimizeFootprint();
         }
@@ -163,7 +160,6 @@ namespace Imel
             _notifyIcon.Dispose();
         }
 
-        // DPI変更時の対応（モニター移動など）
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
         {
             base.OnDpiChanged(oldDpi, newDpi);
@@ -187,7 +183,6 @@ namespace Imel
                                 Int32Rect.Empty,
                                 BitmapSizeOptions.FromEmptyOptions());
 
-                            // フリーズしてスレッド間共有可能にする
                             if (_cachedIcon.CanFreeze) _cachedIcon.Freeze();
                         }
                     }
@@ -296,13 +291,7 @@ namespace Imel
                 }
             }
             var settingsWindow = new SettingsWindow(this);
-
-            // キャッシュ済みのアイコンを設定
-            if (_cachedIcon != null)
-            {
-                settingsWindow.Icon = _cachedIcon;
-            }
-
+            if (_cachedIcon != null) settingsWindow.Icon = _cachedIcon;
             settingsWindow.Show();
         }
 
@@ -323,19 +312,14 @@ namespace Imel
             catch { this.Visibility = Visibility.Hidden; }
         }
 
-        /// <summary>
-        /// 定期更新処理のメインフロー
-        /// </summary>
         private void ProcessUpdate()
         {
-            // 1. カーソル可視チェック
             if (SettingHideWhenCursorHidden && !IsCursorVisible())
             {
                 this.Visibility = Visibility.Hidden;
                 return;
             }
 
-            // 2. アクティブウィンドウ取得
             IntPtr hwndForeground = GetForegroundWindow();
             if (hwndForeground == IntPtr.Zero)
             {
@@ -346,20 +330,17 @@ namespace Imel
             uint processId;
             uint threadId = GetWindowThreadProcessId(hwndForeground, out processId);
 
-            // 3. IME状態チェック (間引き実行)
             if ((DateTime.Now - _lastImeCheckTime).TotalMilliseconds >= ImeCheckInterval)
             {
                 CheckImeStatus(hwndForeground, threadId);
                 _lastImeCheckTime = DateTime.Now;
             }
 
-            // 4. 位置更新 (毎フレーム実行して滑らかに追従)
             if (this.Visibility == Visibility.Visible)
             {
                 UpdatePosition();
             }
 
-            // 5. メモリ解放 (定期的実行)
             if ((DateTime.Now - _lastMemoryCleanupTime).TotalMilliseconds >= MemoryCleanupInterval)
             {
                 MinimizeFootprint();
@@ -367,9 +348,6 @@ namespace Imel
             }
         }
 
-        /// <summary>
-        /// カーソルが表示されているかOSに問い合わせます。
-        /// </summary>
         private bool IsCursorVisible()
         {
             var info = new CURSORINFO();
@@ -378,7 +356,7 @@ namespace Imel
             {
                 return info.flags == CURSOR_SHOWING;
             }
-            return true; // 取得失敗時は表示とみなす
+            return true;
         }
 
         private void CheckImeStatus(IntPtr hwndForeground, uint threadId)
@@ -386,7 +364,6 @@ namespace Imel
             uint currentThreadId = GetCurrentThreadId();
             bool attached = false;
 
-            // 入力コンテキスト取得のためスレッドアタッチ
             if (threadId != currentThreadId) attached = AttachThreadInput(currentThreadId, threadId, true);
 
             try
@@ -398,7 +375,6 @@ namespace Imel
                 int conversionMode = 0;
                 bool statusRetrieved = false;
 
-                // 4-A. ImmGetContext (レガシー)
                 IntPtr hImc = ImmGetContext(hwndFocus);
                 if (hImc != IntPtr.Zero)
                 {
@@ -414,7 +390,6 @@ namespace Imel
                     finally { ImmReleaseContext(hwndFocus, hImc); }
                 }
 
-                // 4-B. WM_IME_CONTROL (モダンアプリ対策)
                 if (!statusRetrieved)
                 {
                     IntPtr hImeWnd = ImmGetDefaultIMEWnd(hwndFocus);
@@ -431,45 +406,40 @@ namespace Imel
                     }
                 }
 
-                // --- 表示テキストの決定ロジック ---
-                string statusText = "_A"; // デフォルト: 半角英数 (アンダーバー付き)
+                string statusText = "_A";
 
                 if (statusRetrieved && isImeOpen)
                 {
                     if ((conversionMode & IME_CMODE_NATIVE) != 0)
                     {
-                        // 日本語入力モード
+                        // 日本語
                         if ((conversionMode & IME_CMODE_KATAKANA) != 0)
                         {
-                            // カタカナモード
                             statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
                         }
                         else
                         {
-                            // ひらがなモード
                             statusText = "あ";
                         }
                     }
                     else
                     {
-                        // 英数モード（IME ON）
+                        // 英数
                         if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
                         {
-                            statusText = "Ａ"; // 全角英数
+                            statusText = "Ａ";
                         }
                         else
                         {
-                            statusText = "_A"; // 半角英数
+                            statusText = "_A";
                         }
                     }
                 }
                 else
                 {
-                    // IME OFF
                     statusText = "_A";
                 }
 
-                // 【最適化】値が変わったときのみUI更新
                 if (ImeStatusText.Text != statusText)
                 {
                     ImeStatusText.Text = statusText;
@@ -483,11 +453,9 @@ namespace Imel
             }
         }
 
-        // マウス位置に追従してウィンドウを移動
         private void UpdatePosition()
         {
             GetCursorPos(out POINT mousePt);
-            // キャッシュ済みDPIと設定されたオフセットを使用
             this.Left = (mousePt.X / _dpiX) + SettingOffsetX + 5;
             this.Top = (mousePt.Y / _dpiY) + SettingOffsetY + 5;
         }
@@ -510,6 +478,12 @@ namespace Imel
         #endregion
 
         #region Win32 API Definitions
+
+        // ウィンドウの拡張スタイル変更用 (New)
+        [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_TOOLWINDOW = 0x00000080;
 
         [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO pci);
         [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr hObject);
