@@ -3,10 +3,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
+using Wpf.Ui.Controls; // FluentWindow, NumberBox等のため
 
 namespace Imel
 {
-    public partial class SettingsWindow : Window
+    // partial クラスの基底クラスを FluentWindow に統一
+    public partial class SettingsWindow : FluentWindow
     {
         private MainWindow _mainWindow;
         private bool _isInitialized = false;
@@ -25,42 +27,36 @@ namespace Imel
 
         private void LoadCurrentSettings()
         {
-            // スタートアップ
-            StartupCheckBox.IsChecked = IsStartupEnabled();
+            // ToggleSwitchへ反映
+            StartupSwitch.IsChecked = IsStartupEnabled();
+            HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
 
-            // カーソル連動
-            HideCursorCheckBox.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
-
-            // 更新頻度
+            // スライダー
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
-            IntervalValueText.Text = _mainWindow.SettingUpdateInterval.ToString();
+            IntervalValueText.Text = $"{_mainWindow.SettingUpdateInterval} ms";
 
-            // サイズ倍率 (New)
             ScaleSlider.Value = _mainWindow.SettingScale;
-            ScaleValueText.Text = _mainWindow.SettingScale.ToString("F1");
+            ScaleValueText.Text = $"{_mainWindow.SettingScale:F1} x";
 
-            // 文字色
+            // 色設定
             SetRGBInputs(TextR, TextG, TextB, _mainWindow.SettingTextColor);
             UpdateComboFromColor(TextColorCombo, _mainWindow.SettingTextColor, true);
 
-            // 背景色
             SetRGBInputs(BgR, BgG, BgB, _mainWindow.SettingBackgroundColor);
             UpdateComboFromColor(BgColorCombo, _mainWindow.SettingBackgroundColor, false);
 
-            // 透過率
-            BgOpacity.Text = _mainWindow.SettingOpacity.ToString();
-
-            // 位置
-            OffsetX.Text = _mainWindow.SettingOffsetX.ToString();
-            OffsetY.Text = _mainWindow.SettingOffsetY.ToString();
+            // NumberBoxへ反映
+            BgOpacity.Value = _mainWindow.SettingOpacity;
+            OffsetX.Value = _mainWindow.SettingOffsetX;
+            OffsetY.Value = _mainWindow.SettingOffsetY;
         }
 
         // --- イベントハンドラ ---
 
-        private void HideCursorCheckBox_Click(object sender, RoutedEventArgs e)
+        private void HideCursorSwitch_Click(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            _mainWindow.SettingHideWhenCursorHidden = HideCursorCheckBox.IsChecked == true;
+            _mainWindow.SettingHideWhenCursorHidden = HideCursorSwitch.IsChecked == true;
         }
 
         private void IntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -68,16 +64,15 @@ namespace Imel
             if (!_isInitialized) return;
             int val = (int)e.NewValue;
             _mainWindow.SettingUpdateInterval = val;
-            if (IntervalValueText != null) IntervalValueText.Text = val.ToString();
+            if (IntervalValueText != null) IntervalValueText.Text = $"{val} ms";
         }
 
-        // サイズ倍率変更 (New)
         private void ScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (!_isInitialized) return;
             double val = Math.Round(e.NewValue, 1);
             _mainWindow.SettingScale = val;
-            if (ScaleValueText != null) ScaleValueText.Text = val.ToString("F1");
+            if (ScaleValueText != null) ScaleValueText.Text = $"{val:F1} x";
         }
 
         // --- スタートアップ設定 ---
@@ -92,14 +87,14 @@ namespace Imel
             catch { return false; }
         }
 
-        private void StartupCheckBox_Click(object sender, RoutedEventArgs e)
+        private void StartupSwitch_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
                 if (key == null) return;
 
-                if (StartupCheckBox.IsChecked == true)
+                if (StartupSwitch.IsChecked == true)
                 {
                     string? path = Environment.ProcessPath;
                     if (!string.IsNullOrEmpty(path)) key.SetValue(AppName, $"\"{path}\"");
@@ -111,21 +106,23 @@ namespace Imel
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"設定の変更に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-                StartupCheckBox.IsChecked = !StartupCheckBox.IsChecked;
+                // エラー時はトグルを戻す (System.Windows.MessageBox を明示)
+                System.Windows.MessageBox.Show($"設定の変更に失敗しました。\n{ex.Message}", "エラー", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
+                StartupSwitch.IsChecked = !StartupSwitch.IsChecked;
             }
         }
 
         // --- 色・位置などの共通処理 ---
 
-        private void SetRGBInputs(TextBox r, TextBox g, TextBox b, Color c)
+        // 引数の型を Wpf.Ui.Controls.NumberBox に明示
+        private void SetRGBInputs(Wpf.Ui.Controls.NumberBox r, Wpf.Ui.Controls.NumberBox g, Wpf.Ui.Controls.NumberBox b, Color c)
         {
-            r.Text = c.R.ToString();
-            g.Text = c.G.ToString();
-            b.Text = c.B.ToString();
+            r.Value = c.R;
+            g.Value = c.G;
+            b.Value = c.B;
         }
 
-        private void UpdateComboFromColor(ComboBox combo, Color c, bool isText)
+        private void UpdateComboFromColor(System.Windows.Controls.ComboBox combo, Color c, bool isText)
         {
             if (isText)
             {
@@ -147,7 +144,7 @@ namespace Imel
             }
         }
 
-        private void TextColorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void TextColorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (!_isInitialized) return;
             Color c = Colors.White;
@@ -172,19 +169,24 @@ namespace Imel
             }
         }
 
-        private void TextColorRGB_Changed(object sender, TextChangedEventArgs e)
+        // NumberBoxのイベントハンドラ
+        private void TextColorRGB_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            if (TryParseColor(TextR.Text, TextG.Text, TextB.Text, out Color c))
-            {
-                _mainWindow.SettingTextColor = c;
-                _isInitialized = false;
-                TextColorCombo.SelectedIndex = 5;
-                _isInitialized = true;
-            }
+            // NumberBox.Valueはdouble?型
+            byte r = (byte)(TextR.Value ?? 0);
+            byte g = (byte)(TextG.Value ?? 0);
+            byte b = (byte)(TextB.Value ?? 0);
+
+            Color c = Color.FromRgb(r, g, b);
+            _mainWindow.SettingTextColor = c;
+
+            _isInitialized = false;
+            TextColorCombo.SelectedIndex = 5; // Custom
+            _isInitialized = true;
         }
 
-        private void BgColorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void BgColorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (!_isInitialized) return;
             Color c = Colors.Black;
@@ -209,42 +211,32 @@ namespace Imel
             }
         }
 
-        private void BgColorRGB_Changed(object sender, TextChangedEventArgs e)
+        private void BgColorRGB_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            if (TryParseColor(BgR.Text, BgG.Text, BgB.Text, out Color c))
-            {
-                _mainWindow.SettingBackgroundColor = c;
-                _isInitialized = false;
-                BgColorCombo.SelectedIndex = 5;
-                _isInitialized = true;
-            }
+            byte r = (byte)(BgR.Value ?? 0);
+            byte g = (byte)(BgG.Value ?? 0);
+            byte b = (byte)(BgB.Value ?? 0);
+
+            Color c = Color.FromRgb(r, g, b);
+            _mainWindow.SettingBackgroundColor = c;
+
+            _isInitialized = false;
+            BgColorCombo.SelectedIndex = 5; // Custom
+            _isInitialized = true;
         }
 
-        private void BgOpacity_Changed(object sender, TextChangedEventArgs e)
+        private void BgOpacity_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            if (int.TryParse(BgOpacity.Text, out int val)) _mainWindow.SettingOpacity = val;
+            _mainWindow.SettingOpacity = (int)(BgOpacity.Value ?? 100);
         }
 
-        private void Offset_Changed(object sender, TextChangedEventArgs e)
+        private void Offset_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            if (int.TryParse(OffsetX.Text, out int x)) _mainWindow.SettingOffsetX = x;
-            if (int.TryParse(OffsetY.Text, out int y)) _mainWindow.SettingOffsetY = y;
-        }
-
-        private bool TryParseColor(string rText, string gText, string bText, out Color color)
-        {
-            color = Colors.Black;
-            if (byte.TryParse(rText, out byte r) &&
-                byte.TryParse(gText, out byte g) &&
-                byte.TryParse(bText, out byte b))
-            {
-                color = Color.FromRgb(r, g, b);
-                return true;
-            }
-            return false;
+            _mainWindow.SettingOffsetX = (int)(OffsetX.Value ?? 0);
+            _mainWindow.SettingOffsetY = (int)(OffsetY.Value ?? 0);
         }
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)

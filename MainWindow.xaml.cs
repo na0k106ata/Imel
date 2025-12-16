@@ -12,6 +12,8 @@ using Drawing = System.Drawing;
 
 namespace Imel
 {
+    // 内容に変更はありませんが、SettingsWindowから参照されるため
+    // 整合性を保つために全体をビルド対象とします。
     public partial class MainWindow : Window
     {
         #region Fields
@@ -30,7 +32,6 @@ namespace Imel
         private double _dpiY = 1.0;
         private IntPtr _thisProcessHandle;
 
-        // 基準サイズ定数 (New)
         private const double BaseSize = 24.0;
         private const double BaseFontSize = 13.0;
 
@@ -42,7 +43,6 @@ namespace Imel
         public int SettingOffsetY { get; set; } = 10;
         public bool SettingHideWhenCursorHidden { get; set; } = true;
 
-        // 表示サイズ倍率 (New)
         private double _settingScale = 1.0;
         public double SettingScale
         {
@@ -50,7 +50,7 @@ namespace Imel
             set
             {
                 _settingScale = Math.Clamp(value, 0.5, 2.0);
-                UpdateWindowSize(); // サイズ変更を即時反映
+                UpdateWindowSize();
             }
         }
 
@@ -141,9 +141,9 @@ namespace Imel
             this.Left = -100;
             this.Top = -100;
 
-            // ウィンドウを「ツールウィンドウ」として定義し、タスクスイッチャー等から除外する
             var helper = new WindowInteropHelper(this);
             int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+            // ツールウィンドウとして設定し、Alt+Tabなどに表示されないようにする
             SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
 
             var source = PresentationSource.FromVisual(this);
@@ -155,6 +155,7 @@ namespace Imel
 
             _timer.Start();
 
+            // 起動直後の安定化を待ってからメモリクリーンアップを実行
             await Task.Delay(2000);
             MinimizeFootprint();
         }
@@ -204,7 +205,7 @@ namespace Imel
             this.SettingOpacity = settings.Opacity;
             this.SettingUpdateInterval = settings.UpdateInterval;
             this.SettingHideWhenCursorHidden = settings.HideWhenCursorHidden;
-            this.SettingScale = settings.Scale; // 倍率ロード
+            this.SettingScale = settings.Scale;
 
             this.SettingTextColor = Color.FromRgb(settings.TextR, settings.TextG, settings.TextB);
             this.SettingBackgroundColor = Color.FromRgb(settings.BgR, settings.BgG, settings.BgB);
@@ -219,7 +220,7 @@ namespace Imel
                 Opacity = this.SettingOpacity,
                 UpdateInterval = this.SettingUpdateInterval,
                 HideWhenCursorHidden = this.SettingHideWhenCursorHidden,
-                Scale = this.SettingScale, // 倍率保存
+                Scale = this.SettingScale,
 
                 TextR = this.SettingTextColor.R,
                 TextG = this.SettingTextColor.G,
@@ -231,7 +232,6 @@ namespace Imel
             AppSettings.Save(settings);
         }
 
-        // ウィンドウサイズとフォントサイズを倍率に合わせて更新 (New)
         private void UpdateWindowSize()
         {
             this.Width = BaseSize * SettingScale;
@@ -259,7 +259,7 @@ namespace Imel
             SettingOffsetY = 10;
             SettingUpdateInterval = 10;
             SettingHideWhenCursorHidden = true;
-            SettingScale = 1.0; // デフォルト倍率
+            SettingScale = 1.0;
 
             SettingTextColor = Colors.White;
             SettingBackgroundColor = Colors.Black;
@@ -387,6 +387,7 @@ namespace Imel
             uint currentThreadId = GetCurrentThreadId();
             bool attached = false;
 
+            // 他のスレッドの入力コンテキストにアクセスするためにスレッド入力をアタッチ
             if (threadId != currentThreadId) attached = AttachThreadInput(currentThreadId, threadId, true);
 
             try
