@@ -1,36 +1,46 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWPF>true</UseWPF>
-    
-    <!-- タスクトレイ機能(NotifyIcon)を利用するためにWinFormsを有効化 -->
-    <UseWindowsForms>true</UseWindowsForms>
-    
-    <!-- 高DPI環境での表示崩れを防止 -->
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    
-    <Platforms>AnyCPU;x64;ARM64</Platforms>
-    <AssemblyName>Imel</AssemblyName>
-    <RootNamespace>Imel</RootNamespace>
-    
-    <!-- アプリケーションのアイコン設定 -->
-    <ApplicationIcon>Imel.ico</ApplicationIcon>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWPF>true</UseWPF>
 
-    <!-- バージョン情報 (v1.0.1) -->
-    <Version>1.0.1</Version>
-    <AssemblyVersion>1.0.1.0</AssemblyVersion>
-    <FileVersion>1.0.1.0</FileVersion>
-    <Company>na0k1_06ata</Company>
-    <Product>Imel</Product>
-    <Copyright>Copyright © 2025 na0k1_06ata</Copyright>
-  </PropertyGroup>
+		<!-- タスクトレイ機能(NotifyIcon)を利用するためにWinFormsを有効化 -->
+		<!-- WPF標準機能だけではタスクトレイアイコンの実装が困難なため利用します -->
+		<UseWindowsForms>true</UseWindowsForms>
 
-  <!-- アイコンをプログラム内からストリームとして読み込めるように埋め込みリソース化 -->
-  <ItemGroup>
-    <EmbeddedResource Include="Imel.ico" />
-  </ItemGroup>
+		<!-- 高DPI環境での表示崩れを防止 -->
+		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+
+		<Platforms>AnyCPU;x64;ARM64</Platforms>
+		<AssemblyName>Imel</AssemblyName>
+		<RootNamespace>Imel</RootNamespace>
+
+		<!-- アプリケーションのアイコン設定 -->
+		<!-- エクスプローラーやタスクバーで表示されるexeファイルのアイコンです -->
+		<ApplicationIcon>Imel.ico</ApplicationIcon>
+
+		<!-- バージョン情報 (v1.0.2) -->
+		<Version>1.0.2</Version>
+		<AssemblyVersion>1.0.2.0</AssemblyVersion>
+		<FileVersion>1.0.2.0</FileVersion>
+
+		<!-- アプリケーションメタデータ -->
+		<Company>na0k1_06ata</Company>
+		<Product>Imel</Product>
+		<Copyright>Copyright © 2025 na0k1_06ata</Copyright>
+	</PropertyGroup>
+
+	<!-- アイコンをプログラム内からストリームとして読み込めるように埋め込みリソース化 -->
+	<!-- GetManifestResourceStreamなどで実行時にアイコンデータを取得するために必要です -->
+	<ItemGroup>
+		<EmbeddedResource Include="Imel.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- モダンなUIコンポーネントライブラリ -->
+		<PackageReference Include="WPF-UI" Version="4.1.0" />
+	</ItemGroup>
 
 </Project>
