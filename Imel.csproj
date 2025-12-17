@@ -21,10 +21,10 @@
 		<!-- エクスプローラーやタスクバーで表示されるexeファイルのアイコンです -->
 		<ApplicationIcon>Imel.ico</ApplicationIcon>
 
-		<!-- バージョン情報 (v1.0.2) -->
-		<Version>1.0.2</Version>
-		<AssemblyVersion>1.0.2.0</AssemblyVersion>
-		<FileVersion>1.0.2.0</FileVersion>
+		<!-- バージョン情報 (v1.0.3) -->
+		<Version>1.0.3</Version>
+		<AssemblyVersion>1.0.3.0</AssemblyVersion>
+		<FileVersion>1.0.3.0</FileVersion>
 
 		<!-- アプリケーションメタデータ -->
 		<Company>na0k1_06ata</Company>
