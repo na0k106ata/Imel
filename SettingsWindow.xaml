@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="Imel 設定" 
-        Height="600" Width="450"
+        Height="760" Width="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         ExtendsContentIntoTitleBar="True"
@@ -14,22 +14,23 @@
             <RowDefinition Height="Auto"/>
             <!-- Header -->
             <RowDefinition Height="*"/>
-            <!-- Content (Scrollable) -->
+            <!-- Content -->
             <RowDefinition Height="Auto"/>
             <!-- Footer -->
         </Grid.RowDefinitions>
 
         <!-- ヘッダー -->
-        <TextBlock Text="設定" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,15" />
+        <TextBlock Text="設定" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10" />
 
         <!-- コンテンツエリア -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,14,0">
             <StackPanel>
 
                 <!-- 全般グループ -->
-                <TextBlock Text="全般" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,5,0,8"/>
+                <TextBlock Text="全般" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/>
 
-                <ui:CardControl Icon="{ui:SymbolIcon Rocket24}" Margin="0,0,0,8">
+                <!-- マージンを 8 -> 4 に短縮 -->
+                <ui:CardControl Icon="{ui:SymbolIcon Rocket24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="スタートアップ" FontWeight="Medium"/>
@@ -39,7 +40,7 @@
                     <ui:ToggleSwitch Name="StartupSwitch" Click="StartupSwitch_Click"/>
                 </ui:CardControl>
 
-                <ui:CardControl Icon="{ui:SymbolIcon EyeOff24}" Margin="0,0,0,8">
+                <ui:CardControl Icon="{ui:SymbolIcon EyeOff24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="自動非表示" FontWeight="Medium"/>
@@ -49,7 +50,7 @@
                     <ui:ToggleSwitch Name="HideCursorSwitch" Click="HideCursorSwitch_Click"/>
                 </ui:CardControl>
 
-                <ui:CardControl Icon="{ui:SymbolIcon Timer24}" Margin="0,0,0,8">
+                <ui:CardControl Icon="{ui:SymbolIcon Timer24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="描画間隔" FontWeight="Medium"/>
@@ -65,9 +66,9 @@
                 </ui:CardControl>
 
                 <!-- 外観グループ -->
-                <TextBlock Text="外観" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,15,0,8"/>
+                <TextBlock Text="外観" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
-                <ui:CardControl Icon="{ui:SymbolIcon Maximize24}" Margin="0,0,0,8">
+                <ui:CardControl Icon="{ui:SymbolIcon Maximize24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="表示サイズ (倍率)" FontWeight="Medium"/>
@@ -81,12 +82,13 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <ui:CardControl Icon="{ui:SymbolIcon Color24}" Margin="0,0,0,8">
+                <!-- 文字色 -->
+                <ui:CardControl Icon="{ui:SymbolIcon Color24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
-                        <TextBlock Text="文字色" FontWeight="Medium"/>
+                        <TextBlock Text="文字色" FontWeight="Medium" VerticalAlignment="Center"/>
                     </ui:CardControl.Header>
-                    <StackPanel HorizontalAlignment="Right">
-                        <ComboBox Name="TextColorCombo" SelectionChanged="TextColorCombo_SelectionChanged" Width="140" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <ComboBox Name="TextColorCombo" SelectionChanged="TextColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
                             <ComboBoxItem Content="白 (White)"/>
                             <ComboBoxItem Content="黒 (Black)"/>
                             <ComboBoxItem Content="赤 (Red)"/>
@@ -94,58 +96,61 @@
                             <ComboBoxItem Content="緑 (Green)"/>
                             <ComboBoxItem Content="カスタム"/>
                         </ComboBox>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <ui:NumberBox Name="TextR" Maximum="255" Minimum="0" Width="40" ValueChanged="TextColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="TextG" Maximum="255" Minimum="0" Width="40" ValueChanged="TextColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="TextB" Maximum="255" Minimum="0" Width="40" ValueChanged="TextColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
-                        </StackPanel>
+
+                        <ui:NumberBox Name="TextR" Maximum="255" Minimum="0" Width="64" ValueChanged="TextColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                        <ui:NumberBox Name="TextG" Maximum="255" Minimum="0" Width="64" ValueChanged="TextColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                        <ui:NumberBox Name="TextB" Maximum="255" Minimum="0" Width="64" ValueChanged="TextColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
                     </StackPanel>
                 </ui:CardControl>
 
-                <ui:CardControl Icon="{ui:SymbolIcon PaintBrush24}" Margin="0,0,0,8">
+                <!-- 背景色 -->
+                <ui:CardControl Icon="{ui:SymbolIcon PaintBrush24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
-                        <TextBlock Text="背景色" FontWeight="Medium"/>
+                        <StackPanel>
+                            <TextBlock Text="背景色" FontWeight="Medium"/>
+                        </StackPanel>
                     </ui:CardControl.Header>
                     <StackPanel HorizontalAlignment="Right">
-                        <ComboBox Name="BgColorCombo" SelectionChanged="BgColorCombo_SelectionChanged" Width="140" Margin="0,0,0,8">
-                            <ComboBoxItem Content="黒 (Black)"/>
-                            <ComboBoxItem Content="白 (White)"/>
-                            <ComboBoxItem Content="赤 (Red)"/>
-                            <ComboBoxItem Content="青 (Blue)"/>
-                            <ComboBoxItem Content="緑 (Green)"/>
-                            <ComboBoxItem Content="カスタム"/>
-                        </ComboBox>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
-                            <ui:NumberBox Name="BgR" Maximum="255" Minimum="0" Width="40" ValueChanged="BgColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="BgG" Maximum="255" Minimum="0" Width="40" ValueChanged="BgColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="BgB" Maximum="255" Minimum="0" Width="40" ValueChanged="BgColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
+                            <ComboBox Name="BgColorCombo" SelectionChanged="BgColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
+                                <ComboBoxItem Content="黒 (Black)"/>
+                                <ComboBoxItem Content="白 (White)"/>
+                                <ComboBoxItem Content="赤 (Red)"/>
+                                <ComboBoxItem Content="青 (Blue)"/>
+                                <ComboBoxItem Content="緑 (Green)"/>
+                                <ComboBoxItem Content="カスタム"/>
+                            </ComboBox>
+                            <ui:NumberBox Name="BgR" Maximum="255" Minimum="0" Width="64" ValueChanged="BgColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="BgG" Maximum="255" Minimum="0" Width="64" ValueChanged="BgColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="BgB" Maximum="255" Minimum="0" Width="64" ValueChanged="BgColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
-                        <Grid>
+
+                        <Grid HorizontalAlignment="Right">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="透過率 (%)" VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"/>
-                            <ui:NumberBox Grid.Column="1" Name="BgOpacity" Maximum="100" Minimum="0" Width="70" ValueChanged="BgOpacity_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Grid.Column="1" Name="BgOpacity" Maximum="100" Minimum="0" Width="80" ValueChanged="BgOpacity_Changed" SpinButtonPlacementMode="Compact"/>
                         </Grid>
                     </StackPanel>
                 </ui:CardControl>
 
                 <!-- 位置グループ -->
-                <TextBlock Text="位置調整" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,15,0,8"/>
+                <TextBlock Text="位置調整" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
                     <ui:CardControl.Header>
                         <TextBlock Text="オフセット (ピクセル)" FontWeight="Medium"/>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,15,0">
                             <TextBlock Text="X:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetX" Width="70" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetX" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Y:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetY" Width="70" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetY" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                     </StackPanel>
                 </ui:CardControl>
@@ -154,7 +159,7 @@
         </ScrollViewer>
 
         <!-- フッター -->
-        <Grid Grid.Row="2" Margin="0,15,0,0">
+        <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
