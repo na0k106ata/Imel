@@ -12,8 +12,7 @@ using Drawing = System.Drawing;
 
 namespace Imel
 {
-    // 内容に変更はありませんが、SettingsWindowから参照されるため
-    // 整合性を保つために全体をビルド対象とします。
+    // v1.0.3-dev: キー入力フリーズ対策のため、AttachThreadInputを廃止しSendMessageTimeoutを採用
     public partial class MainWindow : Window
     {
         #region Fields
@@ -355,7 +354,7 @@ namespace Imel
 
             if ((DateTime.Now - _lastImeCheckTime).TotalMilliseconds >= ImeCheckInterval)
             {
-                CheckImeStatus(hwndForeground, threadId);
+                CheckImeStatus(threadId); // AttachThreadInputを使わないため引数を変更
                 _lastImeCheckTime = DateTime.Now;
             }
 
@@ -382,97 +381,115 @@ namespace Imel
             return true;
         }
 
-        private void CheckImeStatus(IntPtr hwndForeground, uint threadId)
+        // 修正: AttachThreadInputを廃止し、GetGUIThreadInfoとSendMessageTimeoutを使用
+        private void CheckImeStatus(uint threadId)
         {
-            uint currentThreadId = GetCurrentThreadId();
-            bool attached = false;
+            bool statusRetrieved = false;
+            bool isImeOpen = false;
+            int conversionMode = 0;
 
-            // 他のスレッドの入力コンテキストにアクセスするためにスレッド入力をアタッチ
-            if (threadId != currentThreadId) attached = AttachThreadInput(currentThreadId, threadId, true);
+            IntPtr hwndTarget = IntPtr.Zero;
 
-            try
+            // 1. 指定スレッドのGUI情報を取得して、実際のフォーカスウィンドウ(キャレットがある場所)を特定する
+            var guiInfo = new GUITHREADINFO();
+            guiInfo.cbSize = Marshal.SizeOf(guiInfo);
+
+            if (GetGUIThreadInfo(threadId, ref guiInfo))
             {
-                IntPtr hwndFocus = GetFocus();
-                if (hwndFocus == IntPtr.Zero) hwndFocus = hwndForeground;
+                hwndTarget = guiInfo.hwndFocus;
+            }
 
-                bool isImeOpen = false;
-                int conversionMode = 0;
-                bool statusRetrieved = false;
+            // フォーカスが取れない場合はフォアグラウンドウィンドウ自体をターゲットにする（フォールバック）
+            if (hwndTarget == IntPtr.Zero)
+            {
+                hwndTarget = GetForegroundWindow();
+            }
 
-                IntPtr hImc = ImmGetContext(hwndFocus);
-                if (hImc != IntPtr.Zero)
+            if (hwndTarget != IntPtr.Zero)
+            {
+                // 2. ターゲットウィンドウに関連付けられたデフォルトIMEウィンドウを取得
+                IntPtr hImeWnd = ImmGetDefaultIMEWnd(hwndTarget);
+                if (hImeWnd != IntPtr.Zero)
                 {
-                    try
-                    {
-                        isImeOpen = ImmGetOpenStatus(hImc);
-                        int sentenceMode = 0;
-                        if (ImmGetConversionStatus(hImc, out conversionMode, out sentenceMode))
-                        {
-                            statusRetrieved = true;
-                        }
-                    }
-                    finally { ImmReleaseContext(hwndFocus, hImc); }
-                }
+                    // 3. SendMessageTimeout で非同期(タイムアウト付き)にIME状態を問い合わせる
+                    // フリーズ回避のため、SMTO_ABORTIFHUNGを使用し、タイムアウトを200msに設定
 
-                if (!statusRetrieved)
-                {
-                    IntPtr hImeWnd = ImmGetDefaultIMEWnd(hwndFocus);
-                    if (hImeWnd != IntPtr.Zero)
+                    IntPtr resultOpen;
+                    IntPtr resultConv;
+
+                    // IMEが開いているか確認
+                    IntPtr retOpen = SendMessageTimeout(
+                        hImeWnd,
+                        WM_IME_CONTROL,
+                        (IntPtr)IMC_GETOPENSTATUS,
+                        IntPtr.Zero,
+                        SMTO_ABORTIFHUNG,
+                        200,
+                        out resultOpen);
+
+                    if (retOpen != IntPtr.Zero) // 送信成功
                     {
-                        IntPtr openStatus = SendMessage(hImeWnd, WM_IME_CONTROL, (IntPtr)IMC_GETOPENSTATUS, IntPtr.Zero);
-                        isImeOpen = (openStatus.ToInt32() != 0);
+                        isImeOpen = (resultOpen.ToInt32() != 0);
                         if (isImeOpen)
                         {
-                            IntPtr convMode = SendMessage(hImeWnd, WM_IME_CONTROL, (IntPtr)IMC_GETCONVERSIONMODE, IntPtr.Zero);
-                            conversionMode = convMode.ToInt32();
+                            // 変換モードの取得
+                            IntPtr retConv = SendMessageTimeout(
+                                hImeWnd,
+                                WM_IME_CONTROL,
+                                (IntPtr)IMC_GETCONVERSIONMODE,
+                                IntPtr.Zero,
+                                SMTO_ABORTIFHUNG,
+                                200,
+                                out resultConv);
+
+                            if (retConv != IntPtr.Zero)
+                            {
+                                conversionMode = resultConv.ToInt32();
+                            }
                         }
                         statusRetrieved = true;
                     }
                 }
+            }
 
-                string statusText = "_A";
+            string statusText = "_A";
 
-                if (statusRetrieved && isImeOpen)
+            if (statusRetrieved && isImeOpen)
+            {
+                if ((conversionMode & IME_CMODE_NATIVE) != 0)
                 {
-                    if ((conversionMode & IME_CMODE_NATIVE) != 0)
+                    if ((conversionMode & IME_CMODE_KATAKANA) != 0)
                     {
-                        if ((conversionMode & IME_CMODE_KATAKANA) != 0)
-                        {
-                            statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
-                        }
-                        else
-                        {
-                            statusText = "あ";
-                        }
+                        statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
                     }
                     else
                     {
-                        if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
-                        {
-                            statusText = "Ａ";
-                        }
-                        else
-                        {
-                            statusText = "_A";
-                        }
+                        statusText = "あ";
                     }
                 }
                 else
                 {
-                    statusText = "_A";
+                    if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
+                    {
+                        statusText = "Ａ";
+                    }
+                    else
+                    {
+                        statusText = "_A";
+                    }
                 }
-
-                if (ImeStatusText.Text != statusText)
-                {
-                    ImeStatusText.Text = statusText;
-                }
-
-                this.Visibility = Visibility.Visible;
             }
-            finally
+            else
             {
-                if (attached) AttachThreadInput(currentThreadId, threadId, false);
+                statusText = "_A";
             }
+
+            if (ImeStatusText.Text != statusText)
+            {
+                ImeStatusText.Text = statusText;
+            }
+
+            this.Visibility = Visibility.Visible;
         }
 
         private void UpdatePosition()
@@ -511,15 +528,23 @@ namespace Imel
         [DllImport("psapi.dll")] static extern int EmptyWorkingSet(IntPtr hwProc);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
-        [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
-        [DllImport("user32.dll")] static extern IntPtr GetFocus();
-        [DllImport("imm32.dll")] static extern IntPtr ImmGetContext(IntPtr hWnd);
-        [DllImport("imm32.dll")] static extern bool ImmGetOpenStatus(IntPtr hIMC);
-        [DllImport("imm32.dll")] static extern bool ImmGetConversionStatus(IntPtr hIMC, out int lpfdwConversion, out int lpfdwSentence);
-        [DllImport("imm32.dll")] static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
+
+        // 変更: AttachThreadInput, GetFocus, ImmGetContext などを削除し、以下を追加
+
+        [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
+
         [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
-        [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        // SendMessageTimeoutの定義追加
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        static extern IntPtr SendMessageTimeout(
+            IntPtr hWnd,
+            uint Msg,
+            IntPtr wParam,
+            IntPtr lParam,
+            uint fuFlags,
+            uint uTimeout,
+            out IntPtr lpdwResult);
 
         [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
 
@@ -531,7 +556,12 @@ namespace Imel
         const int IMC_GETCONVERSIONMODE = 0x0001;
         const int CURSOR_SHOWING = 0x00000001;
 
+        // SendMessageTimeout flags
+        const uint SMTO_ABORTIFHUNG = 0x0002;
+
         [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
+
+        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct CURSORINFO
@@ -540,6 +570,20 @@ namespace Imel
             public Int32 flags;
             public IntPtr hCursor;
             public POINT ptScreenPos;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GUITHREADINFO
+        {
+            public int cbSize;
+            public int flags;
+            public IntPtr hwndActive;
+            public IntPtr hwndFocus;
+            public IntPtr hwndCapture;
+            public IntPtr hwndMenuOwner;
+            public IntPtr hwndMoveSize;
+            public IntPtr hwndCaret;
+            public RECT rcCaret;
         }
 
         #endregion
