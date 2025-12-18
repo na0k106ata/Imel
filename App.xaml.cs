@@ -5,7 +5,7 @@ using System.Windows;
 namespace Imel
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// アプリケーションのエントリーポイント
     /// </summary>
     public partial class App : Application
     {
