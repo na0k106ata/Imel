@@ -7,7 +7,10 @@ using Wpf.Ui.Controls; // FluentWindow, NumberBox等のため
 
 namespace Imel
 {
-    // partial クラスの基底クラスを FluentWindow に統一
+    /// <summary>
+    /// 設定ウィンドウ
+    /// Wpf.Ui (Fluent Design) を使用してWindows 11ライクなUIを提供します。
+    /// </summary>
     public partial class SettingsWindow : FluentWindow
     {
         private MainWindow _mainWindow;
@@ -25,27 +28,30 @@ namespace Imel
             _isInitialized = true;
         }
 
+        /// <summary>
+        /// MainWindowの現在の設定値をUIコントロールに反映させます
+        /// </summary>
         private void LoadCurrentSettings()
         {
-            // ToggleSwitchへ反映
+            // スタートアップ設定とカーソル連動設定の反映
             StartupSwitch.IsChecked = IsStartupEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
 
-            // スライダー
+            // スライダー値の反映
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
             IntervalValueText.Text = $"{_mainWindow.SettingUpdateInterval} ms";
 
             ScaleSlider.Value = _mainWindow.SettingScale;
             ScaleValueText.Text = $"{_mainWindow.SettingScale:F1} x";
 
-            // 色設定
+            // 色設定の反映（プリセット判定含む）
             SetRGBInputs(TextR, TextG, TextB, _mainWindow.SettingTextColor);
             UpdateComboFromColor(TextColorCombo, _mainWindow.SettingTextColor, true);
 
             SetRGBInputs(BgR, BgG, BgB, _mainWindow.SettingBackgroundColor);
             UpdateComboFromColor(BgColorCombo, _mainWindow.SettingBackgroundColor, false);
 
-            // NumberBoxへ反映
+            // 数値入力ボックスへの反映
             BgOpacity.Value = _mainWindow.SettingOpacity;
             OffsetX.Value = _mainWindow.SettingOffsetX;
             OffsetY.Value = _mainWindow.SettingOffsetY;
@@ -106,7 +112,7 @@ namespace Imel
             }
             catch (Exception ex)
             {
-                // エラー時はトグルを戻す (System.Windows.MessageBox を明示)
+                // エラー時はトグルを戻す
                 System.Windows.MessageBox.Show($"設定の変更に失敗しました。\n{ex.Message}", "エラー", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
                 StartupSwitch.IsChecked = !StartupSwitch.IsChecked;
             }
@@ -114,7 +120,6 @@ namespace Imel
 
         // --- 色・位置などの共通処理 ---
 
-        // 引数の型を Wpf.Ui.Controls.NumberBox に明示
         private void SetRGBInputs(Wpf.Ui.Controls.NumberBox r, Wpf.Ui.Controls.NumberBox g, Wpf.Ui.Controls.NumberBox b, Color c)
         {
             r.Value = c.R;
@@ -122,6 +127,9 @@ namespace Imel
             b.Value = c.B;
         }
 
+        /// <summary>
+        /// 現在の色がプリセットに含まれているか判定し、コンボボックスを選択状態にします
+        /// </summary>
         private void UpdateComboFromColor(System.Windows.Controls.ComboBox combo, Color c, bool isText)
         {
             if (isText)
@@ -131,7 +139,7 @@ namespace Imel
                 else if (c == Colors.Red) combo.SelectedIndex = 2;
                 else if (c == Colors.Blue) combo.SelectedIndex = 3;
                 else if (c == Colors.Green) combo.SelectedIndex = 4;
-                else combo.SelectedIndex = 5;
+                else combo.SelectedIndex = 5; // Custom
             }
             else
             {
@@ -140,7 +148,7 @@ namespace Imel
                 else if (c == Colors.Red) combo.SelectedIndex = 2;
                 else if (c == Colors.Blue) combo.SelectedIndex = 3;
                 else if (c == Colors.Green) combo.SelectedIndex = 4;
-                else combo.SelectedIndex = 5;
+                else combo.SelectedIndex = 5; // Custom
             }
         }
 
@@ -162,6 +170,7 @@ namespace Imel
 
             if (!isCustom)
             {
+                // プリセット選択時はRGBボックスとメインウィンドウを更新
                 _isInitialized = false;
                 SetRGBInputs(TextR, TextG, TextB, c);
                 _mainWindow.SettingTextColor = c;
@@ -169,11 +178,10 @@ namespace Imel
             }
         }
 
-        // NumberBoxのイベントハンドラ
         private void TextColorRGB_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            // NumberBox.Valueはdouble?型
+
             byte r = (byte)(TextR.Value ?? 0);
             byte g = (byte)(TextG.Value ?? 0);
             byte b = (byte)(TextB.Value ?? 0);
@@ -181,8 +189,9 @@ namespace Imel
             Color c = Color.FromRgb(r, g, b);
             _mainWindow.SettingTextColor = c;
 
+            // 手動変更されたためコンボボックスをCustomに変更
             _isInitialized = false;
-            TextColorCombo.SelectedIndex = 5; // Custom
+            TextColorCombo.SelectedIndex = 5;
             _isInitialized = true;
         }
 
@@ -222,7 +231,7 @@ namespace Imel
             _mainWindow.SettingBackgroundColor = c;
 
             _isInitialized = false;
-            BgColorCombo.SelectedIndex = 5; // Custom
+            BgColorCombo.SelectedIndex = 5;
             _isInitialized = true;
         }
 

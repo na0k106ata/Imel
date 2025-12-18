@@ -5,97 +5,67 @@ using System.Text.Json;
 namespace Imel
 {
     /// <summary>
-    /// アプリケーションの設定データを保持し、JSONファイルへの読み書きを行うクラス。
+    /// アプリケーション設定のデータモデルと保存・読み込みロジックを提供します。
     /// </summary>
     public class AppSettings
     {
-        // --- 位置・表示設定 ---
+        // 表示位置オフセット X
         public int OffsetX { get; set; } = 10;
+        // 表示位置オフセット Y
         public int OffsetY { get; set; } = 10;
 
-        /// <summary>
-        /// ウィンドウの不透明度 (0-100)
-        /// </summary>
+        // 背景の不透明度 (0-100)
         public int Opacity { get; set; } = 67;
 
-        /// <summary>
-        /// キャレット位置の監視間隔 (ミリ秒)
-        /// </summary>
+        // 更新間隔 (ms)
         public int UpdateInterval { get; set; } = 10;
 
-        // 表示サイズ倍率 (デフォルト: 1.0)
-        public double Scale { get; set; } = 1.0;
-
-        // --- 動作設定 ---
-
-        /// <summary>
-        /// OS側でマウスカーソルが非表示になった際にウィンドウを隠すかどうか
-        /// </summary>
+        // OSのマウスカーソル非表示時に連動して隠すか
         public bool HideWhenCursorHidden { get; set; } = true;
 
-        // --- 色設定 (RGB) ---
+        // 表示倍率
+        public double Scale { get; set; } = 1.0;
+
+        // テキスト色 (RGB)
         public byte TextR { get; set; } = 255;
         public byte TextG { get; set; } = 255;
         public byte TextB { get; set; } = 255;
 
+        // 背景色 (RGB)
         public byte BgR { get; set; } = 0;
         public byte BgG { get; set; } = 0;
         public byte BgB { get; set; } = 0;
 
-        /// <summary>
-        /// 設定ファイルのパスを取得します。(AppData/Roaming/Imel/settings.json)
-        /// </summary>
-        private static string GetConfigPath()
-        {
-            // Roamingフォルダを使用することで、ユーザーごとの設定として保存されます
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folder = Path.Combine(appData, "Imel");
+        private static string SettingsPath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Imel",
+            "settings.json");
 
-            if (!Directory.Exists(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
-
-            return Path.Combine(folder, "settings.json");
-        }
-
-        /// <summary>
-        /// 設定をJSONファイルに保存します。
-        /// </summary>
         public static void Save(AppSettings settings)
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize(settings, options);
-                File.WriteAllText(GetConfigPath(), jsonString);
+                string dir = Path.GetDirectoryName(SettingsPath) ?? "";
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingsPath, json);
             }
-            catch
-            {
-                // 保存失敗時は例外を無視します（ユーザー操作を妨げないため）
-            }
+            catch { }
         }
 
-        /// <summary>
-        /// 設定をJSONファイルから読み込みます。失敗時はデフォルト値を返します。
-        /// </summary>
         public static AppSettings Load()
         {
             try
             {
-                string path = GetConfigPath();
-                if (File.Exists(path))
+                if (File.Exists(SettingsPath))
                 {
-                    string jsonString = File.ReadAllText(path);
-                    var settings = JsonSerializer.Deserialize<AppSettings>(jsonString);
-                    if (settings != null) return settings;
+                    string json = File.ReadAllText(SettingsPath);
+                    var obj = JsonSerializer.Deserialize<AppSettings>(json);
+                    return obj ?? new AppSettings();
                 }
             }
-            catch
-            {
-                // 読み込み失敗時（ファイル破損など）は無視してデフォルト設定を使用します
-            }
-
+            catch { }
             return new AppSettings();
         }
     }
