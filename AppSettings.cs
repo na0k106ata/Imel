@@ -5,25 +5,35 @@ using System.Text.Json;
 namespace Imel
 {
     /// <summary>
+    /// アプリケーションのテーマ設定
+    /// </summary>
+    public enum AppTheme
+    {
+        Light,
+        Dark,
+        Auto
+    }
+
+    /// <summary>
     /// アプリケーション設定のデータモデルと保存・読み込みロジックを提供します。
     /// </summary>
     public class AppSettings
     {
-        // 表示位置オフセット X
+        // 表示位置オフセット X (ピクセル)
         public int OffsetX { get; set; } = 10;
-        // 表示位置オフセット Y
+        // 表示位置オフセット Y (ピクセル)
         public int OffsetY { get; set; } = 10;
 
-        // 背景の不透明度 (0-100)
+        // 背景の不透明度 (0-100%)
         public int Opacity { get; set; } = 67;
 
-        // 更新間隔 (ms)
+        // 更新間隔 (ミリ秒)
         public int UpdateInterval { get; set; } = 10;
 
         // OSのマウスカーソル非表示時に連動して隠すか
         public bool HideWhenCursorHidden { get; set; } = true;
 
-        // 表示倍率
+        // 表示倍率 (0.5 - 2.0)
         public double Scale { get; set; } = 1.0;
 
         // テキスト色 (RGB)
@@ -36,11 +46,18 @@ namespace Imel
         public byte BgG { get; set; } = 0;
         public byte BgB { get; set; } = 0;
 
+        // アプリケーションのテーマ (Light, Dark, Auto)
+        public AppTheme Theme { get; set; } = AppTheme.Auto;
+
+        // 設定ファイルの保存パス (AppDataフォルダ内)
         private static string SettingsPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Imel",
             "settings.json");
 
+        /// <summary>
+        /// 設定をJSONファイルとして保存します。
+        /// </summary>
         public static void Save(AppSettings settings)
         {
             try
@@ -54,6 +71,9 @@ namespace Imel
             catch { }
         }
 
+        /// <summary>
+        /// JSONファイルから設定を読み込みます。失敗した場合はデフォルト値を返します。
+        /// </summary>
         public static AppSettings Load()
         {
             try

@@ -15,6 +15,7 @@ namespace Imel
     {
         private MainWindow _mainWindow;
         private bool _isInitialized = false;
+        private AppSettings _currentSettings;
 
         private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AppName = "Imel";
@@ -23,6 +24,9 @@ namespace Imel
         {
             InitializeComponent();
             _mainWindow = mainWindow;
+
+            // 設定を読み込んでおく（保存用）
+            _currentSettings = AppSettings.Load();
 
             LoadCurrentSettings();
             _isInitialized = true;
@@ -36,6 +40,9 @@ namespace Imel
             // スタートアップ設定とカーソル連動設定の反映
             StartupSwitch.IsChecked = IsStartupEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
+
+            // テーマ設定の反映
+            ThemeCombo.SelectedIndex = (int)_currentSettings.Theme; // Enumの並び順とComboBoxの並び順を一致させている前提
 
             // スライダー値の反映
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
@@ -55,6 +62,28 @@ namespace Imel
             BgOpacity.Value = _mainWindow.SettingOpacity;
             OffsetX.Value = _mainWindow.SettingOffsetX;
             OffsetY.Value = _mainWindow.SettingOffsetY;
+        }
+
+        // --- テーマ設定 ---
+
+        private void ThemeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (!_isInitialized) return;
+
+            AppTheme selectedTheme = AppTheme.Auto;
+            switch (ThemeCombo.SelectedIndex)
+            {
+                case 0: selectedTheme = AppTheme.Auto; break;
+                case 1: selectedTheme = AppTheme.Light; break;
+                case 2: selectedTheme = AppTheme.Dark; break;
+            }
+
+            // テーマを即時適用
+            App.ApplyTheme(selectedTheme);
+
+            // 設定オブジェクトに保存
+            _currentSettings.Theme = selectedTheme;
+            AppSettings.Save(_currentSettings);
         }
 
         // --- イベントハンドラ ---
@@ -81,7 +110,7 @@ namespace Imel
             if (ScaleValueText != null) ScaleValueText.Text = $"{val:F1} x";
         }
 
-        // --- スタートアップ設定 ---
+        // --- スタートアップ設定 (レジストリ操作) ---
 
         private bool IsStartupEnabled()
         {
@@ -102,17 +131,19 @@ namespace Imel
 
                 if (StartupSwitch.IsChecked == true)
                 {
+                    // 実行ファイルのパスをレジストリに登録
                     string? path = Environment.ProcessPath;
                     if (!string.IsNullOrEmpty(path)) key.SetValue(AppName, $"\"{path}\"");
                 }
                 else
                 {
+                    // レジストリから削除
                     key.DeleteValue(AppName, false);
                 }
             }
             catch (Exception ex)
             {
-                // エラー時はトグルを戻す
+                // 権限エラー等が発生した場合はユーザーに通知し、スイッチを元の状態に戻す
                 System.Windows.MessageBox.Show($"設定の変更に失敗しました。\n{ex.Message}", "エラー", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
                 StartupSwitch.IsChecked = !StartupSwitch.IsChecked;
             }
@@ -253,6 +284,9 @@ namespace Imel
             _isInitialized = false;
             _mainWindow.ResetSettings();
             LoadCurrentSettings();
+            // テーマもリセットする場合はここで対応
+            _currentSettings.Theme = AppTheme.Auto;
+            ThemeCombo.SelectedIndex = 0;
             _isInitialized = true;
         }
 

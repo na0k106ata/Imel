@@ -24,16 +24,19 @@ namespace Imel
         private Forms.NotifyIcon _notifyIcon = null!;
         private ImageSource? _cachedIcon = null;
 
+        // IME監視用タイマー制御
         private DateTime _lastImeCheckTime = DateTime.MinValue;
-        private const double ImeCheckInterval = 100.0;
+        private const double ImeCheckInterval = 100.0; // 100msごとにチェック
 
+        // メモリクリーンアップ制御
         private DateTime _lastMemoryCleanupTime = DateTime.MinValue;
-        private const double MemoryCleanupInterval = 30000.0;
+        private const double MemoryCleanupInterval = 30000.0; // 30秒ごとにクリーンアップ
 
         private double _dpiX = 1.0;
         private double _dpiY = 1.0;
         private IntPtr _thisProcessHandle;
 
+        // UI定数
         private const double BaseSize = 24.0;
         private const double BaseFontSize = 13.0;
 
@@ -41,6 +44,7 @@ namespace Imel
 
         #region Properties (Settings)
 
+        // 設定値のキャッシュプロパティ
         public int SettingOffsetX { get; set; } = 10;
         public int SettingOffsetY { get; set; } = 10;
         public bool SettingHideWhenCursorHidden { get; set; } = true;
@@ -131,6 +135,7 @@ namespace Imel
             InitializeNotifyIcon();
             CacheAppIcon();
 
+            // メインループ用タイマーの初期化
             _timer = new DispatcherTimer();
             _timer.Interval = TimeSpan.FromMilliseconds(SettingUpdateInterval);
             _timer.Tick += Timer_Tick;
@@ -141,13 +146,15 @@ namespace Imel
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 初期表示位置を画面外に設定
+            // 初期表示位置を画面外に設定（ちらつき防止）
             this.Left = -100;
             this.Top = -100;
 
             var helper = new WindowInteropHelper(this);
             int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
+
             // ツールウィンドウとして設定し、Alt+Tabやタスクバーに表示されないようにする
+            // WS_EX_TOOLWINDOW (0x00000080) を付与
             SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
 
             var source = PresentationSource.FromVisual(this);
@@ -177,11 +184,13 @@ namespace Imel
             _dpiY = newDpi.DpiScaleY;
         }
 
+        /// <summary>
+        /// アプリケーションアイコンをリソースから読み込み、WPFで使用可能な形式でキャッシュします。
+        /// </summary>
         private void CacheAppIcon()
         {
             try
             {
-                // リソースからアイコンを読み込み、WPFで使用可能なBitmapSourceに変換してキャッシュ
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 using (var stream = assembly.GetManifestResourceStream("Imel.Imel.ico"))
                 {
@@ -343,12 +352,14 @@ namespace Imel
 
         private void ProcessUpdate()
         {
+            // 設定に基づき、OSのカーソルが非表示の場合は隠す
             if (SettingHideWhenCursorHidden && !IsCursorVisible())
             {
                 this.Visibility = Visibility.Hidden;
                 return;
             }
 
+            // フォアグラウンドウィンドウがない場合は隠す
             IntPtr hwndForeground = GetForegroundWindow();
             if (hwndForeground == IntPtr.Zero)
             {
@@ -359,7 +370,7 @@ namespace Imel
             uint processId;
             uint threadId = GetWindowThreadProcessId(hwndForeground, out processId);
 
-            // IME状態のチェック頻度を制限して負荷を下げる
+            // IME状態のチェック頻度を制限してCPU負荷を下げる
             if ((DateTime.Now - _lastImeCheckTime).TotalMilliseconds >= ImeCheckInterval)
             {
                 CheckImeStatus(threadId);
@@ -372,7 +383,7 @@ namespace Imel
                 UpdatePosition();
             }
 
-            // 定期的なメモリクリーンアップ
+            // 定期的なメモリクリーンアップ（ワーキングセットの削減）
             if ((DateTime.Now - _lastMemoryCleanupTime).TotalMilliseconds >= MemoryCleanupInterval)
             {
                 MinimizeFootprint();
@@ -393,7 +404,8 @@ namespace Imel
 
         /// <summary>
         /// 指定されたスレッドのIME状態を確認します。
-        /// AttachThreadInputを使用せず、非同期メッセージ送信を使用することでフリーズを回避します。
+        /// AttachThreadInputを使用せず、非同期メッセージ送信を使用することで、
+        /// 監視対象アプリが応答しない場合の巻き添えフリーズを回避します。
         /// </summary>
         /// <param name="threadId">監視対象のスレッドID</param>
         private void CheckImeStatus(uint threadId)
@@ -426,8 +438,8 @@ namespace Imel
                 if (hImeWnd != IntPtr.Zero)
                 {
                     // 3. SendMessageTimeout で非同期(タイムアウト付き)にIME状態を問い合わせる
-                    // 監視対象アプリが応答しない(ハングアップ中)場合の巻き添えフリーズを防止するため
-                    // SMTO_ABORTIFHUNGを使用し、短いタイムアウト(200ms)を設定する
+                    // SMTO_ABORTIFHUNG: ハングアップ時は即座に中止
+                    // タイムアウト: 200ms
 
                     IntPtr resultOpen;
                     IntPtr resultConv;
@@ -476,10 +488,12 @@ namespace Imel
                 {
                     if ((conversionMode & IME_CMODE_KATAKANA) != 0)
                     {
+                        // 半角カタカナ / 全角カタカナ
                         statusText = (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
                     }
                     else
                     {
+                        // ひらがな
                         statusText = "あ";
                     }
                 }
@@ -487,16 +501,19 @@ namespace Imel
                 {
                     if ((conversionMode & IME_CMODE_FULLSHAPE) != 0)
                     {
+                        // 全角英数
                         statusText = "Ａ";
                     }
                     else
                     {
+                        // 半角英数
                         statusText = "_A";
                     }
                 }
             }
             else
             {
+                // IMEオフまたは取得失敗時は半角英数表示
                 statusText = "_A";
             }
 
@@ -512,11 +529,14 @@ namespace Imel
         private void UpdatePosition()
         {
             GetCursorPos(out POINT mousePt);
-            // DPIスケールを考慮して座標変換
+            // DPIスケールを考慮して座標変換し、設定されたオフセットを加算
             this.Left = (mousePt.X / _dpiX) + SettingOffsetX + 5;
             this.Top = (mousePt.Y / _dpiY) + SettingOffsetY + 5;
         }
 
+        /// <summary>
+        /// 不要なメモリを解放し、ワーキングセットを最小化します。
+        /// </summary>
         public void MinimizeFootprint()
         {
             try
@@ -547,10 +567,13 @@ namespace Imel
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        // 監視対象ウィンドウの詳細情報を取得（フォーカス制御用）
         [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
 
+        // IME関連
         [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
 
+        // 非同期メッセージ送信（タイムアウト付き）
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         static extern IntPtr SendMessageTimeout(
             IntPtr hWnd,
@@ -571,6 +594,7 @@ namespace Imel
         const int IMC_GETCONVERSIONMODE = 0x0001;
         const int CURSOR_SHOWING = 0x00000001;
 
+        // ハングアップ時は待機せずに中止するフラグ
         const uint SMTO_ABORTIFHUNG = 0x0002;
 
         [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
