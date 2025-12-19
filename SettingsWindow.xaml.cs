@@ -42,7 +42,13 @@ namespace Imel
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
 
             // テーマ設定の反映
-            ThemeCombo.SelectedIndex = (int)_currentSettings.Theme; // Enumの並び順とComboBoxの並び順を一致させている前提
+            // Enumの値(Light=0, Dark=1, Auto=2) と コンボボックスの並び順(Auto=0, Light=1, Dark=2) をマッピング
+            ThemeCombo.SelectedIndex = _currentSettings.Theme switch
+            {
+                AppTheme.Light => 1,
+                AppTheme.Dark => 2,
+                _ => 0 // Auto
+            };
 
             // スライダー値の反映
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
