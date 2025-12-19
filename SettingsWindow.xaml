@@ -7,27 +7,28 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica">
+        WindowBackdropType="None">
+    <!-- 
+      変更点:
+      1. WindowBackdropType="None": Mica等の特殊効果を無効化
+      2. Background="{DynamicResource ApplicationBackgroundBrush}": テーマに応じた標準背景色を適用
+    -->
 
-    <!-- 全体のマージンをさらに縮小 (16 -> 10) -->
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Header -->
             <RowDefinition Height="*"/>
-            <!-- Content -->
             <RowDefinition Height="Auto"/>
-            <!-- Footer -->
         </Grid.RowDefinitions>
 
-        <!-- ヘッダー (マージン 8 -> 4) -->
+        <!-- ヘッダー -->
         <TextBlock Text="設定" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,4" />
 
-        <!-- コンテンツエリア Padding (12 -> 10) -->
+        <!-- コンテンツエリア -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,10,0">
             <StackPanel>
 
-                <!-- 全般グループ -->
+                <!-- 全般 -->
                 <TextBlock Text="全般" FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,2"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon Rocket24}" Margin="0,0,0,2">
@@ -65,7 +66,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 外観グループ (上マージン 8 -> 6) -->
+                <!-- 外観 -->
                 <TextBlock Text="外観" FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,6,0,2"/>
 
                 <!-- テーマ設定 -->
@@ -111,7 +112,6 @@
                             <ComboBoxItem Content="緑 (Green)"/>
                             <ComboBoxItem Content="カスタム"/>
                         </ComboBox>
-
                         <ui:NumberBox Name="TextR" Maximum="255" Minimum="0" Width="55" ValueChanged="TextColorRGB_Changed" PlaceholderText="R" Margin="0,0,4,0" SpinButtonPlacementMode="Compact" FontSize="12"/>
                         <ui:NumberBox Name="TextG" Maximum="255" Minimum="0" Width="55" ValueChanged="TextColorRGB_Changed" PlaceholderText="G" Margin="0,0,4,0" SpinButtonPlacementMode="Compact" FontSize="12"/>
                         <ui:NumberBox Name="TextB" Maximum="255" Minimum="0" Width="55" ValueChanged="TextColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact" FontSize="12"/>
@@ -139,7 +139,6 @@
                             <ui:NumberBox Name="BgG" Maximum="255" Minimum="0" Width="55" ValueChanged="BgColorRGB_Changed" PlaceholderText="G" Margin="0,0,4,0" SpinButtonPlacementMode="Compact" FontSize="12"/>
                             <ui:NumberBox Name="BgB" Maximum="255" Minimum="0" Width="55" ValueChanged="BgColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact" FontSize="12"/>
                         </StackPanel>
-
                         <Grid HorizontalAlignment="Right">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -151,7 +150,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 位置グループ (上マージン 8 -> 6) -->
+                <!-- 位置調整 -->
                 <TextBlock Text="位置調整" FontSize="13" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,6,0,2"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
@@ -173,14 +172,13 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- フッター (上マージン 8 -> 4) -->
+        <!-- フッター -->
         <Grid Grid.Row="2" Margin="0,4,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-
             <ui:Button Content="初期設定に戻す" Icon="{ui:SymbolIcon ArrowCounterclockwise24}" Appearance="Secondary" Click="ResetButton_Click" FontSize="12"/>
             <ui:Button Grid.Column="2" Content="閉じる" Appearance="Primary" Click="CloseButton_Click" Width="80" FontSize="12"/>
         </Grid>
