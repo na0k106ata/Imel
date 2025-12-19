@@ -7,8 +7,7 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         ExtendsContentIntoTitleBar="True"
-        WindowBackdropType="Mica"
-        Background="{x:Null}">
+        WindowBackdropType="Mica">
 
     <!-- 全体のマージンをさらに縮小 (16 -> 10) -->
     <Grid Margin="10">
