@@ -5,10 +5,10 @@ using System.Windows;
 namespace Imel
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// アプリケーションのエントリーポイント定義。
+    /// WPFアプリケーションのライフサイクルを管理します。
     /// </summary>
     public partial class App : Application
     {
     }
-
 }

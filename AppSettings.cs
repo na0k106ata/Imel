@@ -10,7 +10,15 @@ namespace Imel
     public class AppSettings
     {
         // --- 位置・表示設定 ---
+
+        /// <summary>
+        /// 表示位置オフセット X (ピクセル)
+        /// </summary>
         public int OffsetX { get; set; } = 10;
+
+        /// <summary>
+        /// 表示位置オフセット Y (ピクセル)
+        /// </summary>
         public int OffsetY { get; set; } = 10;
 
         /// <summary>
@@ -23,7 +31,9 @@ namespace Imel
         /// </summary>
         public int UpdateInterval { get; set; } = 10;
 
-        // 表示サイズ倍率 (デフォルト: 1.0)
+        /// <summary>
+        /// 表示サイズ倍率 (デフォルト: 1.0)
+        /// </summary>
         public double Scale { get; set; } = 1.0;
 
         // --- 動作設定 ---
@@ -34,10 +44,17 @@ namespace Imel
         public bool HideWhenCursorHidden { get; set; } = true;
 
         // --- 色設定 (RGB) ---
+
+        /// <summary>
+        /// 文字色の赤成分 (0-255)
+        /// </summary>
         public byte TextR { get; set; } = 255;
         public byte TextG { get; set; } = 255;
         public byte TextB { get; set; } = 255;
 
+        /// <summary>
+        /// 背景色の赤成分 (0-255)
+        /// </summary>
         public byte BgR { get; set; } = 0;
         public byte BgG { get; set; } = 0;
         public byte BgB { get; set; } = 0;
