@@ -12,17 +12,24 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <!-- Header -->
             <RowDefinition Height="*"/>
+            <!-- Content -->
             <RowDefinition Height="Auto"/>
+            <!-- Footer -->
         </Grid.RowDefinitions>
 
+        <!-- ヘッダー -->
         <TextBlock Text="設定" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10" />
 
+        <!-- コンテンツエリア -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,14,0">
             <StackPanel>
 
+                <!-- 全般グループ -->
                 <TextBlock Text="全般" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/>
 
+                <!-- マージンを 8 -> 4 に短縮 -->
                 <ui:CardControl Icon="{ui:SymbolIcon Rocket24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
@@ -58,6 +65,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
+                <!-- 外観グループ -->
                 <TextBlock Text="外観" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon Maximize24}" Margin="0,0,0,4">
@@ -74,6 +82,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
+                <!-- 文字色 -->
                 <ui:CardControl Icon="{ui:SymbolIcon Color24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <TextBlock Text="文字色" FontWeight="Medium" VerticalAlignment="Center"/>
@@ -94,6 +103,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
+                <!-- 背景色 -->
                 <ui:CardControl Icon="{ui:SymbolIcon PaintBrush24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
@@ -126,6 +136,7 @@
                     </StackPanel>
                 </ui:CardControl>
 
+                <!-- 位置グループ -->
                 <TextBlock Text="位置調整" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
@@ -147,6 +158,7 @@
             </StackPanel>
         </ScrollViewer>
 
+        <!-- フッター -->
         <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
