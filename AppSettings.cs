@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 
@@ -27,9 +27,9 @@ namespace Imel
         public int Opacity { get; set; } = 67;
 
         /// <summary>
-        /// キャレット位置の監視間隔 (ミリ秒)
+        /// インジケーターの位置更新間隔 (ミリ秒)
         /// </summary>
-        public int UpdateInterval { get; set; } = 10;
+        public int UpdateInterval { get; set; } = 16;
 
         /// <summary>
         /// 表示サイズ倍率 (デフォルト: 1.0)
