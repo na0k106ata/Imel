@@ -1,20 +1,23 @@
-﻿using System;
+using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
-using Wpf.Ui.Controls; // FluentWindow, NumberBox等のため
+using Wpf.Ui.Appearance;
+using Wpf.Ui.Controls;
 
 namespace Imel
 {
     /// <summary>
     /// 設定画面のロジック。
-    /// Wpf.Ui (Fluent Design) を使用して設定UIを提供します。
+    /// メインウィンドウが保持している設定値を編集し、必要に応じて即時反映します。
     /// </summary>
     public partial class SettingsWindow : FluentWindow
     {
-        private MainWindow _mainWindow;
+        private readonly MainWindow _mainWindow;
         private bool _isInitialized = false;
+        private bool _isThemeWatcherActive = false;
 
         private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AppName = "Imel";
@@ -24,42 +27,75 @@ namespace Imel
             InitializeComponent();
             _mainWindow = mainWindow;
 
+            SourceInitialized += SettingsWindow_SourceInitialized;
+            Closing += SettingsWindow_Closing;
+
             LoadCurrentSettings();
             _isInitialized = true;
         }
 
-        /// <summary>
-        /// MainWindowの現在の設定値をUIコントロールに反映させます。
-        /// </summary>
+        private void SettingsWindow_SourceInitialized(object? sender, EventArgs e)
+        {
+            ApplyCurrentSystemTheme();
+            SystemThemeWatcher.Watch(this);
+            _isThemeWatcherActive = true;
+        }
+
+        private void ApplyCurrentSystemTheme()
+        {
+            var systemTheme = ApplicationThemeManager.GetSystemTheme();
+            var applicationTheme = systemTheme switch
+            {
+                SystemTheme.Dark or SystemTheme.Glow or SystemTheme.CapturedMotion => ApplicationTheme.Dark,
+                SystemTheme.HCBlack or SystemTheme.HCWhite or SystemTheme.HC1 or SystemTheme.HC2 => ApplicationTheme.HighContrast,
+                _ => ApplicationTheme.Light
+            };
+
+            ApplicationThemeManager.Apply(applicationTheme, WindowBackdropType.Mica, true);
+        }
+
+        private void SettingsWindow_Closing(object? sender, CancelEventArgs e)
+        {
+            if (!_isThemeWatcherActive)
+            {
+                return;
+            }
+
+            try
+            {
+                SystemThemeWatcher.UnWatch(this);
+            }
+            catch (InvalidOperationException)
+            {
+                // 終了処理中はネイティブハンドルが既に破棄されている場合があります。
+            }
+            finally
+            {
+                _isThemeWatcherActive = false;
+            }
+        }
+
         private void LoadCurrentSettings()
         {
-            // スタートアップ設定とカーソル連動設定の反映
             StartupSwitch.IsChecked = IsStartupEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
 
-            // 更新間隔スライダーの反映
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
             IntervalValueText.Text = $"{_mainWindow.SettingUpdateInterval} ms";
 
-            // スケールスライダーの反映
             ScaleSlider.Value = _mainWindow.SettingScale;
             ScaleValueText.Text = $"{_mainWindow.SettingScale:F1} x";
 
-            // 文字色設定の反映（プリセット判定含む）
             SetRGBInputs(TextR, TextG, TextB, _mainWindow.SettingTextColor);
             UpdateComboFromColor(TextColorCombo, _mainWindow.SettingTextColor, true);
 
-            // 背景色設定の反映（プリセット判定含む）
             SetRGBInputs(BgR, BgG, BgB, _mainWindow.SettingBackgroundColor);
             UpdateComboFromColor(BgColorCombo, _mainWindow.SettingBackgroundColor, false);
 
-            // その他数値入力ボックスへの反映
             BgOpacity.Value = _mainWindow.SettingOpacity;
             OffsetX.Value = _mainWindow.SettingOffsetX;
             OffsetY.Value = _mainWindow.SettingOffsetY;
         }
-
-        // --- イベントハンドラ ---
 
         private void HideCursorSwitch_Click(object sender, RoutedEventArgs e)
         {
@@ -83,11 +119,6 @@ namespace Imel
             if (ScaleValueText != null) ScaleValueText.Text = $"{val:F1} x";
         }
 
-        // --- スタートアップ設定 (レジストリ操作) ---
-
-        /// <summary>
-        /// レジストリを確認し、スタートアップに登録されているか判定します。
-        /// </summary>
         private bool IsStartupEnabled()
         {
             try
@@ -95,7 +126,10 @@ namespace Imel
                 using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, false);
                 return key?.GetValue(AppName) != null;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
 
         private void StartupSwitch_Click(object sender, RoutedEventArgs e)
@@ -107,25 +141,24 @@ namespace Imel
 
                 if (StartupSwitch.IsChecked == true)
                 {
-                    // 実行ファイルのパスをレジストリに登録
                     string? path = Environment.ProcessPath;
                     if (!string.IsNullOrEmpty(path)) key.SetValue(AppName, $"\"{path}\"");
                 }
                 else
                 {
-                    // レジストリから削除
                     key.DeleteValue(AppName, false);
                 }
             }
             catch (Exception ex)
             {
-                // 権限エラー等が発生した場合はユーザーに通知し、スイッチを元の状態に戻す
-                System.Windows.MessageBox.Show($"設定の変更に失敗しました。\n{ex.Message}", "エラー", System.Windows.MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show(
+                    $"設定の変更に失敗しました。\n{ex.Message}",
+                    "エラー",
+                    System.Windows.MessageBoxButton.OK,
+                    MessageBoxImage.Error);
                 StartupSwitch.IsChecked = !StartupSwitch.IsChecked;
             }
         }
-
-        // --- 色・位置などの共通処理 ---
 
         private void SetRGBInputs(Wpf.Ui.Controls.NumberBox r, Wpf.Ui.Controls.NumberBox g, Wpf.Ui.Controls.NumberBox b, Color c)
         {
@@ -134,12 +167,8 @@ namespace Imel
             b.Value = c.B;
         }
 
-        /// <summary>
-        /// 指定された色がプリセットに含まれているか判定し、コンボボックスの選択状態を更新します。
-        /// </summary>
-        private void UpdateComboFromColor(System.Windows.Controls.ComboBox combo, Color c, bool isText)
+        private void UpdateComboFromColor(ComboBox combo, Color c, bool isText)
         {
-            // プリセット色の定義 (インデックス順)
             if (isText)
             {
                 if (c == Colors.White) combo.SelectedIndex = 0;
@@ -147,7 +176,7 @@ namespace Imel
                 else if (c == Colors.Red) combo.SelectedIndex = 2;
                 else if (c == Colors.Blue) combo.SelectedIndex = 3;
                 else if (c == Colors.Green) combo.SelectedIndex = 4;
-                else combo.SelectedIndex = 5; // Custom
+                else combo.SelectedIndex = 5;
             }
             else
             {
@@ -156,11 +185,11 @@ namespace Imel
                 else if (c == Colors.Red) combo.SelectedIndex = 2;
                 else if (c == Colors.Blue) combo.SelectedIndex = 3;
                 else if (c == Colors.Green) combo.SelectedIndex = 4;
-                else combo.SelectedIndex = 5; // Custom
+                else combo.SelectedIndex = 5;
             }
         }
 
-        private void TextColorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void TextColorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_isInitialized) return;
             Color c = Colors.White;
@@ -178,7 +207,6 @@ namespace Imel
 
             if (!isCustom)
             {
-                // プリセット選択時はRGBボックスとメインウィンドウを更新
                 _isInitialized = false;
                 SetRGBInputs(TextR, TextG, TextB, c);
                 _mainWindow.SettingTextColor = c;
@@ -194,16 +222,14 @@ namespace Imel
             byte g = (byte)(TextG.Value ?? 0);
             byte b = (byte)(TextB.Value ?? 0);
 
-            Color c = Color.FromRgb(r, g, b);
-            _mainWindow.SettingTextColor = c;
+            _mainWindow.SettingTextColor = Color.FromRgb(r, g, b);
 
-            // 手動変更されたためコンボボックスをCustomに変更
             _isInitialized = false;
             TextColorCombo.SelectedIndex = 5;
             _isInitialized = true;
         }
 
-        private void BgColorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void BgColorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_isInitialized) return;
             Color c = Colors.Black;
@@ -231,15 +257,15 @@ namespace Imel
         private void BgColorRGB_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
+
             byte r = (byte)(BgR.Value ?? 0);
             byte g = (byte)(BgG.Value ?? 0);
             byte b = (byte)(BgB.Value ?? 0);
 
-            Color c = Color.FromRgb(r, g, b);
-            _mainWindow.SettingBackgroundColor = c;
+            _mainWindow.SettingBackgroundColor = Color.FromRgb(r, g, b);
 
             _isInitialized = false;
-            BgColorCombo.SelectedIndex = 5; // Custom
+            BgColorCombo.SelectedIndex = 5;
             _isInitialized = true;
         }
 
@@ -266,7 +292,7 @@ namespace Imel
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Close();
         }
     }
 }

@@ -1,8 +1,8 @@
-﻿<ui:FluentWindow x:Class="Imel.SettingsWindow"
+<ui:FluentWindow x:Class="Imel.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-        Title="Imel 設定" 
+        Title="Imel 設定"
         Height="760" Width="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
@@ -12,24 +12,17 @@
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- Header -->
             <RowDefinition Height="*"/>
-            <!-- Content -->
             <RowDefinition Height="Auto"/>
-            <!-- Footer -->
         </Grid.RowDefinitions>
 
-        <!-- ヘッダー -->
         <TextBlock Text="設定" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10" />
 
-        <!-- コンテンツエリア -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,14,0">
             <StackPanel>
 
-                <!-- 全般グループ -->
                 <TextBlock Text="全般" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/>
 
-                <!-- マージンを 8 -> 4 に短縮 -->
                 <ui:CardControl Icon="{ui:SymbolIcon Rocket24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
@@ -54,18 +47,17 @@
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="描画間隔" FontWeight="Medium"/>
-                            <TextBlock Text="小さいほどスムーズになります (推奨: 5-15ms)" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            <TextBlock Text="小さいほどスムーズになります (推奨: 16-33ms)" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Name="IntervalValueText" Text="10 ms" VerticalAlignment="Center" Width="40" TextAlignment="Right" Margin="0,0,10,0"/>
-                        <Slider Name="IntervalSlider" Minimum="2" Maximum="100" Width="120" 
+                        <TextBlock Name="IntervalValueText" Text="16 ms" VerticalAlignment="Center" Width="40" TextAlignment="Right" Margin="0,0,10,0"/>
+                        <Slider Name="IntervalSlider" Minimum="2" Maximum="100" Width="120"
                                 TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="IntervalSlider_ValueChanged"/>
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 外観グループ -->
                 <TextBlock Text="外観" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon Maximize24}" Margin="0,0,0,4">
@@ -82,7 +74,6 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 文字色 -->
                 <ui:CardControl Icon="{ui:SymbolIcon Color24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <TextBlock Text="文字色" FontWeight="Medium" VerticalAlignment="Center"/>
@@ -103,7 +94,6 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 背景色 -->
                 <ui:CardControl Icon="{ui:SymbolIcon PaintBrush24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
@@ -136,7 +126,6 @@
                     </StackPanel>
                 </ui:CardControl>
 
-                <!-- 位置グループ -->
                 <TextBlock Text="位置調整" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
@@ -158,7 +147,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- フッター -->
         <Grid Grid.Row="2" Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
