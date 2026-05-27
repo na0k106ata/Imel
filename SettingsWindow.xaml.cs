@@ -1,11 +1,11 @@
 using System;
-using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Win32;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using Wpf.Ui.Markup;
 
 namespace Imel
 {
@@ -17,7 +17,6 @@ namespace Imel
     {
         private readonly MainWindow _mainWindow;
         private bool _isInitialized = false;
-        private bool _isThemeWatcherActive = false;
 
         private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AppName = "Imel";
@@ -28,7 +27,6 @@ namespace Imel
             _mainWindow = mainWindow;
 
             SourceInitialized += SettingsWindow_SourceInitialized;
-            Closing += SettingsWindow_Closing;
 
             LoadCurrentSettings();
             _isInitialized = true;
@@ -37,8 +35,6 @@ namespace Imel
         private void SettingsWindow_SourceInitialized(object? sender, EventArgs e)
         {
             ApplyCurrentSystemTheme();
-            SystemThemeWatcher.Watch(this);
-            _isThemeWatcherActive = true;
         }
 
         private void ApplyCurrentSystemTheme()
@@ -51,28 +47,16 @@ namespace Imel
                 _ => ApplicationTheme.Light
             };
 
-            ApplicationThemeManager.Apply(applicationTheme, WindowBackdropType.Mica, true);
-        }
-
-        private void SettingsWindow_Closing(object? sender, CancelEventArgs e)
-        {
-            if (!_isThemeWatcherActive)
+            for (int i = Resources.MergedDictionaries.Count - 1; i >= 0; i--)
             {
-                return;
+                if (Resources.MergedDictionaries[i] is ThemesDictionary)
+                {
+                    Resources.MergedDictionaries.RemoveAt(i);
+                }
             }
 
-            try
-            {
-                SystemThemeWatcher.UnWatch(this);
-            }
-            catch (InvalidOperationException)
-            {
-                // 終了処理中はネイティブハンドルが既に破棄されている場合があります。
-            }
-            finally
-            {
-                _isThemeWatcherActive = false;
-            }
+            Resources.MergedDictionaries.Insert(0, new ThemesDictionary { Theme = applicationTheme });
+            WindowBackgroundManager.UpdateBackground(this, applicationTheme, WindowBackdropType.Mica);
         }
 
         private void LoadCurrentSettings()

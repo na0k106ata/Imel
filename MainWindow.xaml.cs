@@ -123,7 +123,8 @@ namespace Imel
 
             InitializeNotifyIcon();
 
-            _timer = new DispatcherTimer();
+            // 設定画面を開いている間も追従が遅れにくいよう、位置更新タイマーは高めの優先度で動かします。
+            _timer = new DispatcherTimer(DispatcherPriority.Send);
             _timer.Interval = TimeSpan.FromMilliseconds(SettingUpdateInterval);
             _timer.Tick += Timer_Tick;
 
