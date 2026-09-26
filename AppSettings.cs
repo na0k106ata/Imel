@@ -12,12 +12,12 @@ namespace Imel
         // --- 位置・表示設定 ---
 
         /// <summary>
-        /// 表示位置オフセット X (ピクセル)
+        /// 表示位置オフセット X (DIP)
         /// </summary>
         public int OffsetX { get; set; } = 10;
 
         /// <summary>
-        /// 表示位置オフセット Y (ピクセル)
+        /// 表示位置オフセット Y (DIP)
         /// </summary>
         public int OffsetY { get; set; } = 10;
 
@@ -43,6 +43,9 @@ namespace Imel
         /// </summary>
         public bool HideWhenCursorHidden { get; set; } = true;
 
+        /// <summary>画面端でインジケーターの配置を反転するか（既定は無効）。</summary>
+        public bool FlipAtScreenEdge { get; set; } = false;
+
         // --- 色設定 (RGB) ---
 
         /// <summary>
@@ -59,61 +62,77 @@ namespace Imel
         public byte BgG { get; set; } = 0;
         public byte BgB { get; set; } = 0;
 
-        /// <summary>
-        /// 設定ファイルのパスを取得します。(AppData/Roaming/Imel/settings.json)
-        /// </summary>
-        private static string GetConfigPath()
+        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+
+        private static string GetConfigPath() => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Imel", "settings.json");
+
+        // 同じディレクトリ内で置換し、書き込み途中のファイルを本体として公開しない。
+        public static bool Save(AppSettings settings, out string? error, string? path = null)
         {
-            // Roamingフォルダを使用することで、ユーザーごとの設定として保存されます
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string folder = Path.Combine(appData, "Imel");
-
-            if (!Directory.Exists(folder))
-            {
-                Directory.CreateDirectory(folder);
-            }
-
-            return Path.Combine(folder, "settings.json");
-        }
-
-        /// <summary>
-        /// 設定をJSONファイルに保存します。
-        /// </summary>
-        public static void Save(AppSettings settings)
-        {
+            string? temporaryPath = null;
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize(settings, options);
-                File.WriteAllText(GetConfigPath(), jsonString);
-            }
-            catch
-            {
-                // 保存失敗時は例外を無視します（ユーザー操作を妨げないため）
-            }
-        }
+                path = Path.GetFullPath(path ?? GetConfigPath());
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    JsonSerializer.Serialize(stream, settings, JsonOptions);
+                    stream.Flush(flushToDisk: true);
+                }
 
-        /// <summary>
-        /// 設定をJSONファイルから読み込みます。失敗時はデフォルト値を返します。
-        /// </summary>
-        public static AppSettings Load()
-        {
-            try
-            {
-                string path = GetConfigPath();
                 if (File.Exists(path))
                 {
-                    string jsonString = File.ReadAllText(path);
-                    var settings = JsonSerializer.Deserialize<AppSettings>(jsonString);
-                    if (settings != null) return settings;
+                    // 破損した本体で正常なバックアップを上書きしない。
+                    string? backup = TryRead(path) != null ? path + ".bak" : null;
+                    File.Replace(temporaryPath, path, backup);
+                }
+                else
+                {
+                    File.Move(temporaryPath, path);
+                }
+
+                error = null;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+            finally
+            {
+                if (temporaryPath != null)
+                {
+                    try { File.Delete(temporaryPath); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
                 }
             }
-            catch
-            {
-                // 読み込み失敗時（ファイル破損など）は無視してデフォルト設定を使用します
-            }
+        }
 
-            return new AppSettings();
+        public static AppSettings Load(string? path = null)
+        {
+            path ??= GetConfigPath();
+            return TryRead(path) ?? TryRead(path + ".bak") ?? new AppSettings();
+        }
+
+        private static AppSettings? TryRead(string path)
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                var settings = JsonSerializer.Deserialize<AppSettings>(stream);
+                if (settings == null) return null;
+                settings.Scale = double.IsFinite(settings.Scale) ? Math.Clamp(settings.Scale, 0.5, 2.0) : 1.0;
+                settings.Opacity = Math.Clamp(settings.Opacity, 0, 100);
+                settings.UpdateInterval = Math.Clamp(settings.UpdateInterval, 2, 100);
+                return settings;
+            }
+            catch (IOException) { return null; }
+            catch (UnauthorizedAccessException) { return null; }
+            catch (JsonException) { return null; }
         }
     }
 }

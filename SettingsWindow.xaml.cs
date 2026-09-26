@@ -27,14 +27,45 @@ namespace Imel
             _mainWindow = mainWindow;
 
             SourceInitialized += SettingsWindow_SourceInitialized;
+            Loaded += (_, _) => ScreenPlacement.FitSettingsWindow(this);
 
             LoadCurrentSettings();
             _isInitialized = true;
+            _mainWindow.SettingsSaveStatusChanged += SettingsSaveStatusChanged;
+            Closing += SettingsWindow_Closing;
+            Closed += (_, _) => _mainWindow.SettingsSaveStatusChanged -= SettingsSaveStatusChanged;
+            SettingsSaveStatusChanged(this, EventArgs.Empty);
         }
+
 
         private void SettingsWindow_SourceInitialized(object? sender, EventArgs e)
         {
             ApplyCurrentSystemTheme();
+            ScreenPlacement.FitSettingsWindow(this);
+        }
+
+        private void SettingsSaveStatusChanged(object? sender, EventArgs e)
+        {
+            SaveStatusText.Text = _mainWindow.SettingsSaveError == null
+                ? "" : "設定を保存できません: " + _mainWindow.SettingsSaveError;
+            SaveStatusText.Visibility = _mainWindow.SettingsSaveError == null
+                ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void SettingsWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_mainWindow.FlushSettings() && !_mainWindow.IsShuttingDown)
+            {
+                e.Cancel = true;
+                System.Windows.MessageBox.Show("設定を保存できませんでした。保存先を確認してください。\n" +
+                    _mainWindow.SettingsSaveError, "Imel", System.Windows.MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+        {
+            base.OnDpiChanged(oldDpi, newDpi);
+            Dispatcher.BeginInvoke(new Action(() => ScreenPlacement.FitSettingsWindow(this)));
         }
 
         private void ApplyCurrentSystemTheme()
@@ -63,6 +94,7 @@ namespace Imel
         {
             StartupSwitch.IsChecked = IsStartupEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
+            FlipAtScreenEdgeSwitch.IsChecked = _mainWindow.SettingFlipAtScreenEdge;
 
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
             IntervalValueText.Text = $"{_mainWindow.SettingUpdateInterval} ms";
@@ -85,6 +117,12 @@ namespace Imel
         {
             if (!_isInitialized) return;
             _mainWindow.SettingHideWhenCursorHidden = HideCursorSwitch.IsChecked == true;
+        }
+
+        private void FlipAtScreenEdgeSwitch_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_isInitialized) return;
+            _mainWindow.SettingFlipAtScreenEdge = FlipAtScreenEdgeSwitch.IsChecked == true;
         }
 
         private void IntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

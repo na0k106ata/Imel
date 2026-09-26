@@ -12,6 +12,9 @@
 
 		<!-- 高DPI環境での表示崩れを防止 -->
 		<ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <!-- WPF が起動を管理するため、DPI は WinForms の起動 API ではなく manifest で指定する。 -->
+        <NoWarn>$(NoWarn);WFAC010</NoWarn>
 
 		<Platforms>AnyCPU;x64;ARM64</Platforms>
 		<AssemblyName>Imel</AssemblyName>
@@ -23,9 +26,9 @@
 
 		<!-- アプリケーションのバージョン情報 -->
 		<!-- .NET Core/.NET 5以降ではAssemblyInfo.csではなくここで管理するのが標準です -->
-		<Version>1.0.7</Version>
-		<AssemblyVersion>1.0.7.0</AssemblyVersion>
-		<FileVersion>1.0.7.0</FileVersion>
+		<Version>1.0.8</Version>
+		<AssemblyVersion>1.0.8.0</AssemblyVersion>
+		<FileVersion>1.0.8.0</FileVersion>
 
 		<!-- アプリケーションメタデータ -->
 		<Company>tabunugoku</Company>
@@ -51,5 +54,8 @@
 		<!-- モダンなUIコンポーネントライブラリ -->
 		<PackageReference Include="WPF-UI" Version="4.1.0" />
 	</ItemGroup>
+    <ItemGroup>
+        <Compile Remove="Tests/**/*.cs" />
+    </ItemGroup>
 
 </Project>

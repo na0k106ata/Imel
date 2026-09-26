@@ -23,12 +23,20 @@ namespace Imel
         private Forms.NotifyIcon _notifyIcon = null!;
 
         // IME状態の取得は比較的重いため、カーソル追従とは別に頻度を制限します。
-        private DateTime _lastImeCheckTime = DateTime.MinValue;
+        private readonly DispatcherTimer _imeTimer;
+        private readonly DispatcherTimer _saveTimer;
+        private bool _settingsLoaded;
+        private bool _settingsDirty;
+        public string? SettingsSaveError { get; private set; }
+        public event EventHandler? SettingsSaveStatusChanged;
         private const double ImeCheckInterval = 100.0;
         private bool _isImeCheckRunning = false;
+        private bool _isClosing;
+        internal bool IsShuttingDown => _isClosing;
 
-        private double _dpiX = 1.0;
-        private double _dpiY = 1.0;
+        private readonly record struct ImeTarget(IntPtr Foreground, IntPtr Focus, uint ThreadId, uint ProcessId);
+
+        private IntPtr _windowHandle;
 
         private const double BaseSize = 24.0;
         private const double BaseFontSize = 13.0;
@@ -37,9 +45,21 @@ namespace Imel
 
         #region Properties (Settings)
 
-        public int SettingOffsetX { get; set; } = 10;
-        public int SettingOffsetY { get; set; } = 10;
-        public bool SettingHideWhenCursorHidden { get; set; } = true;
+        private int _offsetX = 10, _offsetY = 10;
+        private bool _hideWhenCursorHidden = true;
+        private bool _flipAtScreenEdge;
+        public bool SettingFlipAtScreenEdge
+        {
+            get => _flipAtScreenEdge;
+            set { _flipAtScreenEdge = value; ScheduleSettingsSave(); }
+        }
+        public int SettingOffsetX { get => _offsetX; set { _offsetX = value; ScheduleSettingsSave(); } }
+        public int SettingOffsetY { get => _offsetY; set { _offsetY = value; ScheduleSettingsSave(); } }
+        public bool SettingHideWhenCursorHidden
+        {
+            get => _hideWhenCursorHidden;
+            set { _hideWhenCursorHidden = value; ScheduleSettingsSave(); }
+        }
 
         private double _settingScale = 1.0;
         public double SettingScale
@@ -49,6 +69,7 @@ namespace Imel
             {
                 _settingScale = Math.Clamp(value, 0.5, 2.0);
                 UpdateWindowSize();
+                ScheduleSettingsSave();
             }
         }
 
@@ -63,6 +84,7 @@ namespace Imel
                 {
                     _timer.Interval = TimeSpan.FromMilliseconds(_settingUpdateInterval);
                 }
+                ScheduleSettingsSave();
             }
         }
 
@@ -77,6 +99,7 @@ namespace Imel
                 {
                     ImeStatusText.Foreground = new SolidColorBrush(value);
                 }
+                ScheduleSettingsSave();
             }
         }
 
@@ -88,6 +111,7 @@ namespace Imel
             {
                 _settingBackgroundColor = value;
                 UpdateBackgroundBrush();
+                ScheduleSettingsSave();
             }
         }
 
@@ -99,6 +123,7 @@ namespace Imel
             {
                 _settingOpacity = Math.Clamp(value, 0, 100);
                 UpdateBackgroundBrush();
+                ScheduleSettingsSave();
             }
         }
 
@@ -127,6 +152,20 @@ namespace Imel
             _timer = new DispatcherTimer(DispatcherPriority.Send);
             _timer.Interval = TimeSpan.FromMilliseconds(SettingUpdateInterval);
             _timer.Tick += Timer_Tick;
+            _imeTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(ImeCheckInterval)
+            };
+            _imeTimer.Tick += (_, _) =>
+            {
+                if (!_isClosing && !_isImeCheckRunning) _ = CheckImeStatusAsync();
+            };
+            _saveTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _saveTimer.Tick += (_, _) => FlushSettings();
+            _settingsLoaded = true;
 
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -144,27 +183,24 @@ namespace Imel
             // Alt+Tabやタスクバーに出ないツールウィンドウとして扱います。
             SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
 
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                _dpiX = source.CompositionTarget.TransformToDevice.M11;
-                _dpiY = source.CompositionTarget.TransformToDevice.M22;
-            }
-
-            _timer.Start();
+            _windowHandle = helper.Handle;
+            SetIndicatorVisibility(Visibility.Hidden);
+            _imeTimer.Start();
+            _ = CheckImeStatusAsync();
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            SaveSettings();
+            _isClosing = true;
+            _timer.Stop();
+            _imeTimer.Stop();
+            _saveTimer.Stop();
+            if (!FlushSettings())
+            {
+                System.Windows.MessageBox.Show("設定を保存できませんでした。\n" + SettingsSaveError,
+                    "Imel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             _notifyIcon.Dispose();
-        }
-
-        protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
-        {
-            base.OnDpiChanged(oldDpi, newDpi);
-            _dpiX = newDpi.DpiScaleX;
-            _dpiY = newDpi.DpiScaleY;
         }
 
         private ImageSource? CreateAppIconImageSource()
@@ -198,13 +234,29 @@ namespace Imel
             SettingOpacity = settings.Opacity;
             SettingUpdateInterval = settings.UpdateInterval;
             SettingHideWhenCursorHidden = settings.HideWhenCursorHidden;
+            SettingFlipAtScreenEdge = settings.FlipAtScreenEdge;
             SettingScale = settings.Scale;
 
             SettingTextColor = Color.FromRgb(settings.TextR, settings.TextG, settings.TextB);
             SettingBackgroundColor = Color.FromRgb(settings.BgR, settings.BgG, settings.BgB);
         }
 
-        private void SaveSettings()
+        private void ScheduleSettingsSave()
+        {
+            if (!_settingsLoaded || _isClosing) return;
+            _settingsDirty = true;
+            _saveTimer.Stop();
+            _saveTimer.Start();
+        }
+
+        public bool FlushSettings()
+        {
+            _saveTimer.Stop();
+            if (!_settingsDirty) return true;
+            return SaveSettings();
+        }
+
+        private bool SaveSettings()
         {
             var settings = new AppSettings
             {
@@ -213,6 +265,7 @@ namespace Imel
                 Opacity = SettingOpacity,
                 UpdateInterval = SettingUpdateInterval,
                 HideWhenCursorHidden = SettingHideWhenCursorHidden,
+                FlipAtScreenEdge = SettingFlipAtScreenEdge,
                 Scale = SettingScale,
                 TextR = SettingTextColor.R,
                 TextG = SettingTextColor.G,
@@ -221,7 +274,11 @@ namespace Imel
                 BgG = SettingBackgroundColor.G,
                 BgB = SettingBackgroundColor.B
             };
-            AppSettings.Save(settings);
+            bool saved = AppSettings.Save(settings, out string? error);
+            SettingsSaveError = error;
+            if (saved) _settingsDirty = false;
+            SettingsSaveStatusChanged?.Invoke(this, EventArgs.Empty);
+            return saved;
         }
 
         private void UpdateWindowSize()
@@ -251,6 +308,7 @@ namespace Imel
             SettingOffsetY = 10;
             SettingUpdateInterval = 16;
             SettingHideWhenCursorHidden = true;
+            SettingFlipAtScreenEdge = false;
             SettingScale = 1.0;
 
             SettingTextColor = Colors.White;
@@ -311,8 +369,6 @@ namespace Imel
 
         private void ExitApp()
         {
-            SaveSettings();
-            _notifyIcon.Dispose();
             Application.Current.Shutdown();
         }
 
@@ -328,32 +384,24 @@ namespace Imel
             }
             catch
             {
-                Visibility = Visibility.Hidden;
+                SetIndicatorVisibility(Visibility.Hidden);
             }
         }
 
         private void ProcessUpdate()
         {
-            // カーソル追従はUIスレッドで軽く保ち、IME問い合わせだけを別スレッドへ逃がします。
-            if (Visibility == Visibility.Visible)
-            {
-                UpdatePosition();
-            }
-
-            var now = DateTime.UtcNow;
-            if (!_isImeCheckRunning && (now - _lastImeCheckTime).TotalMilliseconds >= ImeCheckInterval)
-            {
-                _lastImeCheckTime = now;
-                _ = CheckImeStatusAsync();
-            }
+            if (_isClosing) return;
+            if (Visibility == Visibility.Visible && !UpdatePosition())
+                SetIndicatorVisibility(Visibility.Hidden);
         }
 
         private void SetIndicatorVisibility(Visibility visibility)
         {
-            if (Visibility != visibility)
-            {
-                Visibility = visibility;
-            }
+            if (Visibility != visibility) Visibility = visibility;
+            if (visibility == Visibility.Visible && !_isClosing)
+                _timer.Start();
+            else
+                _timer.Stop();
         }
 
         private bool IsCursorVisible()
@@ -379,27 +427,41 @@ namespace Imel
                     return;
                 }
 
-                IntPtr hwndForeground = GetForegroundWindow();
-                if (hwndForeground == IntPtr.Zero)
+                if (!TryGetImeTarget(out var target))
                 {
                     SetIndicatorVisibility(Visibility.Hidden);
                     return;
                 }
 
-                uint processId;
-                uint threadId = GetWindowThreadProcessId(hwndForeground, out processId);
-                string statusText = await Task.Run(() => GetImeStatusText(threadId));
+                string? statusText = await Task.Run(() =>
+                    ImeStatusReader.Read(target.Focus, ImmGetDefaultIMEWnd, QueryImeControl));
+
+                if (_isClosing) return;
+
+                // await 中にアプリや同じアプリ内の入力先が変わった結果は使わない。
+                if (!TryGetImeTarget(out var currentTarget) || currentTarget != target)
+                {
+                    SetIndicatorVisibility(Visibility.Hidden);
+                    return;
+                }
+
+                if (statusText == null || (SettingHideWhenCursorHidden && !IsCursorVisible()))
+                {
+                    SetIndicatorVisibility(Visibility.Hidden);
+                    return;
+                }
 
                 if (ImeStatusText.Text != statusText)
                 {
                     ImeStatusText.Text = statusText;
                 }
 
-                SetIndicatorVisibility(Visibility.Visible);
+                // 非表示中にカーソルが移動していても、古い場所に表示しない。
+                SetIndicatorVisibility(UpdatePosition() ? Visibility.Visible : Visibility.Hidden);
             }
             catch
             {
-                SetIndicatorVisibility(Visibility.Hidden);
+                if (!_isClosing) SetIndicatorVisibility(Visibility.Hidden);
             }
             finally
             {
@@ -407,102 +469,37 @@ namespace Imel
             }
         }
 
-        /// <summary>
-        /// 指定スレッドのIME状態を取得し、表示用テキストへ変換します。
-        /// AttachThreadInputは使わず、タイムアウト付きメッセージ送信でハングの巻き添えを避けます。
-        /// </summary>
-        private string GetImeStatusText(uint threadId)
+        private static bool TryGetImeTarget(out ImeTarget target)
         {
-            bool statusRetrieved = false;
-            bool isImeOpen = false;
-            int conversionMode = 0;
+            target = default;
+            IntPtr foreground = GetForegroundWindow();
+            if (foreground == IntPtr.Zero) return false;
 
-            IntPtr hwndTarget = IntPtr.Zero;
+            uint threadId = GetWindowThreadProcessId(foreground, out uint processId);
+            if (threadId == 0) return false;
 
             var guiInfo = new GUITHREADINFO { cbSize = Marshal.SizeOf<GUITHREADINFO>() };
-            if (GetGUIThreadInfo(threadId, ref guiInfo))
-            {
-                hwndTarget = guiInfo.hwndFocus;
-            }
+            if (!GetGUIThreadInfo(threadId, ref guiInfo)) return false;
+            if (GetForegroundWindow() != foreground) return false;
 
-            if (hwndTarget == IntPtr.Zero)
-            {
-                hwndTarget = GetForegroundWindow();
-            }
-
-            if (hwndTarget != IntPtr.Zero)
-            {
-                IntPtr hImeWnd = ImmGetDefaultIMEWnd(hwndTarget);
-                if (hImeWnd != IntPtr.Zero)
-                {
-                    IntPtr retOpen = SendMessageTimeout(
-                        hImeWnd,
-                        WM_IME_CONTROL,
-                        (IntPtr)IMC_GETOPENSTATUS,
-                        IntPtr.Zero,
-                        SMTO_ABORTIFHUNG,
-                        200,
-                        out IntPtr resultOpen);
-
-                    if (retOpen != IntPtr.Zero)
-                    {
-                        isImeOpen = resultOpen.ToInt32() != 0;
-                        if (isImeOpen)
-                        {
-                            IntPtr retConv = SendMessageTimeout(
-                                hImeWnd,
-                                WM_IME_CONTROL,
-                                (IntPtr)IMC_GETCONVERSIONMODE,
-                                IntPtr.Zero,
-                                SMTO_ABORTIFHUNG,
-                                200,
-                                out IntPtr resultConv);
-
-                            if (retConv != IntPtr.Zero)
-                            {
-                                conversionMode = resultConv.ToInt32();
-                            }
-                        }
-
-                        statusRetrieved = true;
-                    }
-                }
-            }
-
-            if (!statusRetrieved || !isImeOpen)
-            {
-                return "_A";
-            }
-
-            if ((conversionMode & IME_CMODE_NATIVE) != 0)
-            {
-                if ((conversionMode & IME_CMODE_KATAKANA) != 0)
-                {
-                    return (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "カ" : "_ｶ";
-                }
-
-                return "あ";
-            }
-
-            return (conversionMode & IME_CMODE_FULLSHAPE) != 0 ? "Ａ" : "_A";
+            // フォーカスなしの場合も、取得済みの前面ウィンドウに対象を固定する。
+            IntPtr focus = guiInfo.hwndFocus != IntPtr.Zero ? guiInfo.hwndFocus : foreground;
+            target = new ImeTarget(foreground, focus, threadId, processId);
+            return true;
         }
 
-        private void UpdatePosition()
+        private static bool QueryImeControl(IntPtr imeWindow, int command, out IntPtr result)
         {
-            GetCursorPos(out POINT mousePt);
+            return SendMessageTimeout(imeWindow, WM_IME_CONTROL, (IntPtr)command,
+                IntPtr.Zero, SMTO_ABORTIFHUNG, 200, out result) != IntPtr.Zero;
+        }
 
-            double newLeft = (mousePt.X / _dpiX) + SettingOffsetX + 5;
-            double newTop = (mousePt.Y / _dpiY) + SettingOffsetY + 5;
+        private bool UpdatePosition()
+        {
+            if (!GetCursorPos(out POINT mousePt)) return false;
 
-            if (Math.Abs(Left - newLeft) > 0.1)
-            {
-                Left = newLeft;
-            }
-
-            if (Math.Abs(Top - newTop) > 0.1)
-            {
-                Top = newTop;
-            }
+            return ScreenPlacement.PlaceIndicator(_windowHandle, mousePt.X, mousePt.Y,
+                Width, Height, SettingOffsetX + 5.0, SettingOffsetY + 5.0, SettingFlipAtScreenEdge);
         }
 
         #endregion
@@ -532,12 +529,7 @@ namespace Imel
 
         [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
 
-        const int IME_CMODE_NATIVE = 0x0001;
-        const int IME_CMODE_KATAKANA = 0x0002;
-        const int IME_CMODE_FULLSHAPE = 0x0008;
         const int WM_IME_CONTROL = 0x0283;
-        const int IMC_GETOPENSTATUS = 0x0005;
-        const int IMC_GETCONVERSIONMODE = 0x0001;
         const int CURSOR_SHOWING = 0x00000001;
         const uint SMTO_ABORTIFHUNG = 0x0002;
 

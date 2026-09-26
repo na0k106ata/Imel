@@ -5,7 +5,7 @@
         Title="Imel 設定"
         Height="760" Width="600"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
 
@@ -18,7 +18,7 @@
 
         <TextBlock Text="設定" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,10" />
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,14,0">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="0,0,14,0">
             <StackPanel>
 
                 <TextBlock Text="全般" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,4"/>
@@ -120,7 +120,7 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="透過率 (%)" VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"/>
+                            <TextBlock Text="背景の不透明度 (%)" VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"/>
                             <ui:NumberBox Grid.Column="1" Name="BgOpacity" Maximum="100" Minimum="0" Width="80" ValueChanged="BgOpacity_Changed" SpinButtonPlacementMode="Compact"/>
                         </Grid>
                     </StackPanel>
@@ -128,9 +128,20 @@
 
                 <TextBlock Text="位置調整" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,10,0,4"/>
 
+                <ui:CardControl Margin="0,0,0,4">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="画面端で配置を反転" FontWeight="Medium"/>
+                            <TextBlock Text="画面からはみ出す場合に左側・上側へ表示 (既定: OFF)"
+                                       FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch Name="FlipAtScreenEdgeSwitch" Click="FlipAtScreenEdgeSwitch_Click"/>
+                </ui:CardControl>
+
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
                     <ui:CardControl.Header>
-                        <TextBlock Text="オフセット (ピクセル)" FontWeight="Medium"/>
+                        <TextBlock Text="オフセット (DIP)" FontWeight="Medium"/>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Orientation="Horizontal" Margin="0,0,15,0">
@@ -147,7 +158,9 @@
             </StackPanel>
         </ScrollViewer>
 
-        <Grid Grid.Row="2" Margin="0,10,0,0">
+        <StackPanel Grid.Row="2">
+            <TextBlock Name="SaveStatusText" TextWrapping="Wrap" Foreground="DarkRed" Visibility="Collapsed"/>
+        <Grid Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -157,5 +170,6 @@
             <ui:Button Content="初期設定に戻す" Icon="{ui:SymbolIcon ArrowCounterclockwise24}" Appearance="Secondary" Click="ResetButton_Click"/>
             <ui:Button Grid.Column="2" Content="閉じる" Appearance="Primary" Click="CloseButton_Click" Width="80"/>
         </Grid>
+        </StackPanel>
     </Grid>
 </ui:FluentWindow>
