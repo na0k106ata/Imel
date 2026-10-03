@@ -28,8 +28,13 @@ namespace Imel
             LoadCurrentSettings();
             _isInitialized = true;
             _mainWindow.SettingsSaveStatusChanged += SettingsSaveStatusChanged;
+            _mainWindow.UpdateStatusChanged += UpdateStatusChanged;
             Closing += SettingsWindow_Closing;
-            Closed += (_, _) => _mainWindow.SettingsSaveStatusChanged -= SettingsSaveStatusChanged;
+            Closed += (_, _) =>
+            {
+                _mainWindow.SettingsSaveStatusChanged -= SettingsSaveStatusChanged;
+                _mainWindow.UpdateStatusChanged -= UpdateStatusChanged;
+            };
             SettingsSaveStatusChanged(this, EventArgs.Empty);
         }
 
@@ -93,6 +98,8 @@ namespace Imel
             StartupSwitch.IsChecked = StartupRegistration.IsEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
             FlipAtScreenEdgeSwitch.IsChecked = _mainWindow.SettingFlipAtScreenEdge;
+            UpdateCheckSwitch.IsChecked = _mainWindow.SettingCheckForUpdates;
+            RefreshUpdateStatus();
 
             IntervalSlider.Value = _mainWindow.SettingUpdateInterval;
             IntervalValueText.Text = $"{_mainWindow.SettingUpdateInterval} ms";
@@ -121,6 +128,48 @@ namespace Imel
         {
             if (!_isInitialized) return;
             _mainWindow.SettingFlipAtScreenEdge = FlipAtScreenEdgeSwitch.IsChecked == true;
+        }
+
+        private void UpdateCheckSwitch_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_isInitialized) return;
+            _mainWindow.SettingCheckForUpdates = UpdateCheckSwitch.IsChecked == true;
+            RefreshUpdateStatus();
+        }
+
+        private void CheckNowButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _mainWindow.CheckForUpdatesAsync();
+        }
+
+        private void OpenReleasePage_Click(object sender, RoutedEventArgs e)
+        {
+            _mainWindow.OpenReleasePage();
+        }
+
+        private void UpdateStatusChanged(object? sender, EventArgs e) => RefreshUpdateStatus();
+
+        private void RefreshUpdateStatus()
+        {
+            UpdateDetailCard.Visibility = _mainWindow.SettingCheckForUpdates ? Visibility.Visible : Visibility.Collapsed;
+
+            var state = _mainWindow.UpdateState;
+            string lastCheck = _mainWindow.LastUpdateCheckUtc is DateTime checkedAt
+                ? $"最終確認: {checkedAt.ToLocalTime():yyyy/MM/dd HH:mm}"
+                : "まだ確認していません";
+            UpdateStatusText.Text = state switch
+            {
+                UpdateCheckState.Checking => "確認中...",
+                UpdateCheckState.UpToDate => lastCheck + " ・ 最新です",
+                UpdateCheckState.UpdateAvailable => lastCheck + " ・ 新しいバージョンがあります",
+                UpdateCheckState.Failed => lastCheck + " ・ 確認できませんでした",
+                _ => lastCheck
+            };
+            CheckNowButton.IsEnabled = state != UpdateCheckState.Checking;
+
+            var update = _mainWindow.AvailableUpdate;
+            UpdateAvailablePanel.Visibility = update != null ? Visibility.Visible : Visibility.Collapsed;
+            if (update != null) UpdateAvailableText.Text = $"v{update.Version} が公開されています";
         }
 
         private void IntervalSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

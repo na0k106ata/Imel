@@ -65,6 +65,25 @@ Assert("OFF preserves high DPI offset across boundary", noFlipDpi == new PixelRe
 Assert("New settings default OFF", !new AppSettings().FlipAtScreenEdge);
 Assert("Startup path quoted", StartupRegistration.GetExecutablePath(@"""C:\Apps\Imel.exe""") == @"C:\Apps\Imel.exe");
 Assert("Startup path with arguments", StartupRegistration.GetExecutablePath(@"""C:\My Apps\Imel.exe"" --tray") == @"C:\My Apps\Imel.exe");
+var current = new Version(1, 0, 9);
+Assert("Version tag with v", UpdateChecker.TryParseVersion("v1.0.10", out var tagVersion) && tagVersion == new Version(1, 0, 10));
+Assert("Version tag without v", UpdateChecker.TryParseVersion("1.2.3", out var plainVersion) && plainVersion == new Version(1, 2, 3));
+Assert("Two part version tag rejected", !UpdateChecker.TryParseVersion("v1.0", out _));
+Assert("Pre-release version tag rejected", !UpdateChecker.TryParseVersion("v1.0.10-beta", out _));
+var newer = UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v1.0.10"",""html_url"":""https://github.com/tabunugoku/Imel/releases/tag/v1.0.10""}", current);
+Assert("Newer release found", newer != null && newer.Version == new Version(1, 0, 10) && newer.ReleaseUrl.EndsWith("/v1.0.10"));
+Assert("Numeric comparison (1.0.10 > 1.0.9)", newer != null);
+Assert("Same version is not an update", UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v1.0.9""}", current) == null);
+Assert("Older version is not an update", UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v1.0.8""}", current) == null);
+Assert("Draft is ignored", UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v2.0.0"",""draft"":true}", current) == null);
+Assert("Prerelease is ignored", UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v2.0.0"",""prerelease"":true}", current) == null);
+var foreign = UpdateChecker.ParseLatestRelease(@"{""tag_name"":""v2.0.0"",""html_url"":""https://example.com/evil""}", current);
+Assert("Foreign release URL replaced", foreign != null && foreign.ReleaseUrl == "https://github.com/tabunugoku/Imel/releases/latest");
+bool invalidTagThrows = false;
+try { UpdateChecker.ParseLatestRelease(@"{""tag_name"":""latest""}", current); }
+catch (FormatException) { invalidTagThrows = true; }
+Assert("Invalid tag reports failure", invalidTagThrows);
+Assert("New settings do not check for updates", !new AppSettings().CheckForUpdates);
 Assert("Startup path unquoted", StartupRegistration.GetExecutablePath(@"  C:\Apps\Imel.exe ") == @"C:\Apps\Imel.exe");
 
 string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ImelTests-" + Guid.NewGuid().ToString("N"));
@@ -104,6 +123,12 @@ try
     Assert("ON survives reload", AppSettings.Load(path).FlipAtScreenEdge);
     Assert("Save OFF", AppSettings.Save(new AppSettings { FlipAtScreenEdge = false }, out _, path));
     Assert("OFF survives reload", !AppSettings.Load(path).FlipAtScreenEdge);
+    var checkedAt = new DateTime(2026, 10, 3, 9, 30, 0, DateTimeKind.Utc);
+    Assert("Save update settings", AppSettings.Save(new AppSettings { CheckForUpdates = true, LastUpdateCheckUtc = checkedAt, NotifiedUpdateVersion = "1.0.10" }, out _, path));
+    var updateSettings = AppSettings.Load(path);
+    Assert("Update settings survive reload", updateSettings.CheckForUpdates && updateSettings.LastUpdateCheckUtc == checkedAt && updateSettings.NotifiedUpdateVersion == "1.0.10");
+    System.IO.File.WriteAllText(path, "{\"OffsetX\":42}");
+    Assert("Existing settings without update option default OFF", !AppSettings.Load(path).CheckForUpdates);
 }
 finally
 {

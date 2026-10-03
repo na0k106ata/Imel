@@ -1,5 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
@@ -41,6 +43,22 @@ namespace Imel
         private const double BaseSize = 24.0;
         private const double BaseFontSize = 13.0;
 
+        private const string NotifyIconText = "Imel (IME Indicator)";
+
+        // 更新の確認は既定でOFF。ONのときだけ GitHub へ問い合わせる。
+        private readonly DispatcherTimer _updateTimer;
+        private CancellationTokenSource? _updateCts;
+        private Forms.ToolStripMenuItem _updateMenuItem = null!;
+        private Forms.ToolStripSeparator _updateMenuSeparator = null!;
+        private string? _notifiedUpdateVersion;
+        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(24);
+        private static readonly TimeSpan UpdateRetryInterval = TimeSpan.FromHours(1);
+
+        internal UpdateCheckState UpdateState { get; private set; } = UpdateCheckState.NotChecked;
+        internal UpdateInfo? AvailableUpdate { get; private set; }
+        internal DateTime? LastUpdateCheckUtc { get; private set; }
+        public event EventHandler? UpdateStatusChanged;
+
         #endregion
 
         #region Properties (Settings)
@@ -53,6 +71,29 @@ namespace Imel
             get => _flipAtScreenEdge;
             set { _flipAtScreenEdge = value; ScheduleSettingsSave(); }
         }
+        private bool _checkForUpdates;
+        public bool SettingCheckForUpdates
+        {
+            get => _checkForUpdates;
+            set
+            {
+                if (_checkForUpdates == value) return;
+                _checkForUpdates = value;
+                ScheduleSettingsSave();
+                if (!_settingsLoaded) return;
+
+                if (value)
+                {
+                    _updateTimer.Start();
+                    _ = CheckForUpdatesAsync();
+                }
+                else
+                {
+                    StopUpdateChecks();
+                }
+            }
+        }
+
         public int SettingOffsetX
         {
             get => _offsetX;
@@ -173,6 +214,15 @@ namespace Imel
                 Interval = TimeSpan.FromMilliseconds(500)
             };
             _saveTimer.Tick += (_, _) => FlushSettings();
+            // スリープ復帰後も確認が大きく遅れないよう、短い間隔で期限を確かめる。
+            _updateTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMinutes(10)
+            };
+            _updateTimer.Tick += (_, _) =>
+            {
+                if (IsUpdateCheckDue()) _ = CheckForUpdatesAsync();
+            };
             _settingsLoaded = true;
 
             Loaded += MainWindow_Loaded;
@@ -195,6 +245,12 @@ namespace Imel
             SetIndicatorVisibility(Visibility.Hidden);
             _imeTimer.Start();
             _ = CheckImeStatusAsync();
+
+            if (SettingCheckForUpdates)
+            {
+                _updateTimer.Start();
+                _ = CheckForUpdatesAsync();
+            }
         }
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -203,6 +259,8 @@ namespace Imel
             _timer.Stop();
             _imeTimer.Stop();
             _saveTimer.Stop();
+            _updateTimer.Stop();
+            _updateCts?.Cancel();
             if (!FlushSettings())
             {
                 System.Windows.MessageBox.Show("設定を保存できませんでした。\n" + SettingsSaveError,
@@ -244,6 +302,9 @@ namespace Imel
             SettingHideWhenCursorHidden = settings.HideWhenCursorHidden;
             SettingFlipAtScreenEdge = settings.FlipAtScreenEdge;
             SettingScale = settings.Scale;
+            SettingCheckForUpdates = settings.CheckForUpdates;
+            LastUpdateCheckUtc = settings.LastUpdateCheckUtc;
+            _notifiedUpdateVersion = settings.NotifiedUpdateVersion;
 
             SettingTextColor = Color.FromRgb(settings.TextR, settings.TextG, settings.TextB);
             SettingBackgroundColor = Color.FromRgb(settings.BgR, settings.BgG, settings.BgB);
@@ -275,6 +336,9 @@ namespace Imel
                 HideWhenCursorHidden = SettingHideWhenCursorHidden,
                 FlipAtScreenEdge = SettingFlipAtScreenEdge,
                 Scale = SettingScale,
+                CheckForUpdates = SettingCheckForUpdates,
+                LastUpdateCheckUtc = LastUpdateCheckUtc,
+                NotifiedUpdateVersion = _notifiedUpdateVersion,
                 TextR = SettingTextColor.R,
                 TextG = SettingTextColor.G,
                 TextB = SettingTextColor.B,
@@ -318,6 +382,7 @@ namespace Imel
             SettingHideWhenCursorHidden = true;
             SettingFlipAtScreenEdge = false;
             SettingScale = 1.0;
+            SettingCheckForUpdates = false;
 
             SettingTextColor = Colors.White;
             SettingBackgroundColor = Colors.Black;
@@ -342,10 +407,17 @@ namespace Imel
                 _notifyIcon.Icon = Drawing.SystemIcons.Application;
             }
 
-            _notifyIcon.Text = "Imel (IME Indicator)";
+            _notifyIcon.Text = NotifyIconText;
             _notifyIcon.Visible = true;
+            _notifyIcon.BalloonTipClicked += (s, e) => OpenReleasePage();
 
             var contextMenu = new Forms.ContextMenuStrip();
+            // 更新があるときだけ表示する。
+            _updateMenuItem = new Forms.ToolStripMenuItem { Available = false };
+            _updateMenuItem.Click += (s, e) => OpenReleasePage();
+            _updateMenuSeparator = new Forms.ToolStripSeparator { Available = false };
+            contextMenu.Items.Add(_updateMenuItem);
+            contextMenu.Items.Add(_updateMenuSeparator);
             var settingsItem = new Forms.ToolStripMenuItem("設定...");
             settingsItem.Click += (s, e) => OpenSettings();
             var exitItem = new Forms.ToolStripMenuItem("終了");
@@ -378,6 +450,99 @@ namespace Imel
         private void ExitApp()
         {
             App.RequestExit();
+        }
+
+        #endregion
+
+        #region Update Check
+
+        public async Task CheckForUpdatesAsync()
+        {
+            if (!SettingCheckForUpdates || _isClosing || UpdateState == UpdateCheckState.Checking) return;
+
+            var cts = new CancellationTokenSource();
+            _updateCts = cts;
+            UpdateState = UpdateCheckState.Checking;
+            UpdateStatusChanged?.Invoke(this, EventArgs.Empty);
+
+            try
+            {
+                var update = await UpdateChecker.CheckAsync(cts.Token);
+                if (cts.IsCancellationRequested) return;
+                AvailableUpdate = update;
+                UpdateState = update != null ? UpdateCheckState.UpdateAvailable : UpdateCheckState.UpToDate;
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+                // OFFへの切り替えや終了で中止した結果は使わない。
+                return;
+            }
+            catch
+            {
+                // 通信できない場合は通知せず、設定画面にだけ表示する。前回見つけた更新の情報は残す。
+                UpdateState = UpdateCheckState.Failed;
+            }
+            finally
+            {
+                if (_updateCts == cts) _updateCts = null;
+                cts.Dispose();
+            }
+
+            LastUpdateCheckUtc = DateTime.UtcNow;
+            ScheduleSettingsSave();
+            ApplyUpdateStatusToTray();
+            UpdateStatusChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private bool IsUpdateCheckDue()
+        {
+            if (LastUpdateCheckUtc is not DateTime last) return true;
+            var wait = UpdateState == UpdateCheckState.Failed ? UpdateRetryInterval : UpdateCheckInterval;
+            return DateTime.UtcNow - last >= wait;
+        }
+
+        private void StopUpdateChecks()
+        {
+            _updateTimer.Stop();
+            _updateCts?.Cancel();
+            AvailableUpdate = null;
+            UpdateState = UpdateCheckState.NotChecked;
+            ApplyUpdateStatusToTray();
+            UpdateStatusChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ApplyUpdateStatusToTray()
+        {
+            var update = SettingCheckForUpdates ? AvailableUpdate : null;
+            _updateMenuItem.Available = update != null;
+            _updateMenuSeparator.Available = update != null;
+            _notifyIcon.Text = update != null ? NotifyIconText + " - 更新があります" : NotifyIconText;
+            if (update == null) return;
+
+            _updateMenuItem.Text = $"v{update.Version} をダウンロード...";
+
+            // 同じバージョンの通知は1回だけにする。
+            string version = update.Version.ToString();
+            if (_notifiedUpdateVersion == version) return;
+            _notifiedUpdateVersion = version;
+            ScheduleSettingsSave();
+            _notifyIcon.ShowBalloonTip(10000, "Imel の新しいバージョンがあります",
+                $"v{update.Version} が公開されました（現在 v{UpdateChecker.GetCurrentVersion()}）。クリックするとダウンロードページを開きます。",
+                Forms.ToolTipIcon.Info);
+        }
+
+        public void OpenReleasePage()
+        {
+            if (AvailableUpdate is not { } update) return;
+            try
+            {
+                Process.Start(new ProcessStartInfo(update.ReleaseUrl) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("ダウンロードページを開けませんでした。\n" + ex.Message,
+                    "Imel", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         #endregion

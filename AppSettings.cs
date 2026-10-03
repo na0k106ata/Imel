@@ -49,6 +49,17 @@ namespace Imel
         /// <summary>画面端でインジケーターの配置を反転するか（既定は無効）。</summary>
         public bool FlipAtScreenEdge { get; set; } = false;
 
+        // --- 更新の確認 ---
+
+        /// <summary>GitHub で新しいバージョンを確認するか（既定は無効）。</summary>
+        public bool CheckForUpdates { get; set; } = false;
+
+        /// <summary>最後に更新を確認した日時 (UTC)。</summary>
+        public DateTime? LastUpdateCheckUtc { get; set; }
+
+        /// <summary>通知済みのバージョン。同じバージョンを繰り返し通知しないために使う。</summary>
+        public string? NotifiedUpdateVersion { get; set; }
+
         // --- 色設定 (RGB) ---
 
         /// <summary>

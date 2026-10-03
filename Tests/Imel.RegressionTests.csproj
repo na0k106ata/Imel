@@ -9,5 +9,6 @@
     <Compile Include="../AppSettings.cs" Link="AppSettings.cs" />
     <Compile Include="../IndicatorPlacement.cs" Link="IndicatorPlacement.cs" />
     <Compile Include="../StartupRegistration.cs" Link="StartupRegistration.cs" />
+    <Compile Include="../UpdateChecker.cs" Link="UpdateChecker.cs" />
   </ItemGroup>
 </Project>

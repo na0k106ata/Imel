@@ -43,6 +43,40 @@
                     <ui:ToggleSwitch Name="HideCursorSwitch" Click="HideCursorSwitch_Click"/>
                 </ui:CardControl>
 
+                <ui:CardControl Icon="{ui:SymbolIcon ArrowSync24}" Margin="0,0,0,4">
+                    <ui:CardControl.Header>
+                        <StackPanel>
+                            <TextBlock Text="更新の確認" FontWeight="Medium"/>
+                            <TextBlock Text="新しいバージョンを通知する (既定: OFF)" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        </StackPanel>
+                    </ui:CardControl.Header>
+                    <ui:ToggleSwitch Name="UpdateCheckSwitch" Click="UpdateCheckSwitch_Click"/>
+                </ui:CardControl>
+
+                <ui:Card Name="UpdateDetailCard" Margin="0,0,0,4" Visibility="Collapsed">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Name="UpdateStatusText" VerticalAlignment="Center" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"/>
+                            <ui:Button Grid.Column="1" Name="CheckNowButton" Content="今すぐ確認" Appearance="Secondary"
+                                       Margin="10,0,0,0" Click="CheckNowButton_Click"/>
+                        </Grid>
+                        <Grid Name="UpdateAvailablePanel" Margin="0,8,0,0" Visibility="Collapsed">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Name="UpdateAvailableText" VerticalAlignment="Center" FontWeight="Medium" TextWrapping="Wrap"/>
+                            <ui:Button Grid.Column="1" Content="ダウンロードページを開く" Icon="{ui:SymbolIcon ArrowDownload24}"
+                                       Appearance="Secondary" Margin="10,0,0,0" Click="OpenReleasePage_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </ui:Card>
+
                 <ui:CardControl Icon="{ui:SymbolIcon Timer24}" Margin="0,0,0,4">
                     <ui:CardControl.Header>
                         <StackPanel>
