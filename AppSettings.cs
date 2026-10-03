@@ -21,6 +21,9 @@ namespace Imel
         /// </summary>
         public int OffsetY { get; set; } = 10;
 
+        /// <summary>オフセットの下限・上限 (DIP)。インジケーターが画面外へ大きく外れないようにする。</summary>
+        public const int MinOffset = -200, MaxOffset = 200;
+
         /// <summary>
         /// ウィンドウの不透明度 (0-100)
         /// </summary>
@@ -127,6 +130,8 @@ namespace Imel
                 if (settings == null) return null;
                 settings.Scale = double.IsFinite(settings.Scale) ? Math.Clamp(settings.Scale, 0.5, 2.0) : 1.0;
                 settings.Opacity = Math.Clamp(settings.Opacity, 0, 100);
+                settings.OffsetX = Math.Clamp(settings.OffsetX, MinOffset, MaxOffset);
+                settings.OffsetY = Math.Clamp(settings.OffsetY, MinOffset, MaxOffset);
                 settings.UpdateInterval = Math.Clamp(settings.UpdateInterval, 2, 100);
                 return settings;
             }

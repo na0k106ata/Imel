@@ -63,6 +63,9 @@ Assert("Explicit OFF matches default", noFlip == IndicatorPlacement.Calculate(19
 var noFlipDpi = IndicatorPlacement.Calculate(-1, -1, 24, 24, 15, 15, 2, new PixelRect(-1920, -1080, 0, 0), false);
 Assert("OFF preserves high DPI offset across boundary", noFlipDpi == new PixelRect(29, 29, 77, 77));
 Assert("New settings default OFF", !new AppSettings().FlipAtScreenEdge);
+Assert("Startup path quoted", StartupRegistration.GetExecutablePath(@"""C:\Apps\Imel.exe""") == @"C:\Apps\Imel.exe");
+Assert("Startup path with arguments", StartupRegistration.GetExecutablePath(@"""C:\My Apps\Imel.exe"" --tray") == @"C:\My Apps\Imel.exe");
+Assert("Startup path unquoted", StartupRegistration.GetExecutablePath(@"  C:\Apps\Imel.exe ") == @"C:\Apps\Imel.exe");
 
 string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ImelTests-" + Guid.NewGuid().ToString("N"));
 System.IO.Directory.CreateDirectory(directory);
@@ -88,6 +91,9 @@ try
     System.IO.File.WriteAllText(path, "{\"Scale\":20,\"Opacity\":-1,\"UpdateInterval\":0}");
     var normalized = AppSettings.Load(path);
     Assert("Invalid values normalized", normalized.Scale == 2 && normalized.Opacity == 0 && normalized.UpdateInterval == 2);
+    System.IO.File.WriteAllText(path, "{\"OffsetX\":100000,\"OffsetY\":-100000}");
+    var offsets = AppSettings.Load(path);
+    Assert("Out of range offsets normalized", offsets.OffsetX == AppSettings.MaxOffset && offsets.OffsetY == AppSettings.MinOffset);
     System.IO.File.WriteAllText(path, "null");
     Assert("Null JSON recovers backup", AppSettings.Load(path).OffsetX == 12);
     System.IO.File.WriteAllText(path + ".bak", "{corrupt");

@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../ImeStatusReader.cs" Link="ImeStatusReader.cs" />
     <Compile Include="../AppSettings.cs" Link="AppSettings.cs" />
     <Compile Include="../IndicatorPlacement.cs" Link="IndicatorPlacement.cs" />
+    <Compile Include="../StartupRegistration.cs" Link="StartupRegistration.cs" />
   </ItemGroup>
 </Project>

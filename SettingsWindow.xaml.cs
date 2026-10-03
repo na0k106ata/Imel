@@ -2,7 +2,6 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Microsoft.Win32;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using Wpf.Ui.Markup;
@@ -17,9 +16,6 @@ namespace Imel
     {
         private readonly MainWindow _mainWindow;
         private bool _isInitialized = false;
-
-        private const string StartupRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        private const string AppName = "Imel";
 
         public SettingsWindow(MainWindow mainWindow)
         {
@@ -56,9 +52,11 @@ namespace Imel
         {
             if (!_mainWindow.FlushSettings() && !_mainWindow.IsShuttingDown)
             {
-                e.Cancel = true;
-                System.Windows.MessageBox.Show("設定を保存できませんでした。保存先を確認してください。\n" +
-                    _mainWindow.SettingsSaveError, "Imel", System.Windows.MessageBoxButton.OK, MessageBoxImage.Warning);
+                // 保存できない環境でも画面を閉じられるようにする。未保存の変更はアプリ終了時に再度保存を試みる。
+                var result = System.Windows.MessageBox.Show("設定を保存できませんでした。保存先を確認してください。\n" +
+                    _mainWindow.SettingsSaveError + "\n\n保存せずに設定画面を閉じますか？",
+                    "Imel", System.Windows.MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                e.Cancel = result != System.Windows.MessageBoxResult.Yes;
             }
         }
 
@@ -92,7 +90,7 @@ namespace Imel
 
         private void LoadCurrentSettings()
         {
-            StartupSwitch.IsChecked = IsStartupEnabled();
+            StartupSwitch.IsChecked = StartupRegistration.IsEnabled();
             HideCursorSwitch.IsChecked = _mainWindow.SettingHideWhenCursorHidden;
             FlipAtScreenEdgeSwitch.IsChecked = _mainWindow.SettingFlipAtScreenEdge;
 
@@ -141,35 +139,12 @@ namespace Imel
             if (ScaleValueText != null) ScaleValueText.Text = $"{val:F1} x";
         }
 
-        private bool IsStartupEnabled()
-        {
-            try
-            {
-                using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, false);
-                return key?.GetValue(AppName) != null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         private void StartupSwitch_Click(object sender, RoutedEventArgs e)
         {
+            bool enabled = StartupSwitch.IsChecked == true;
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(StartupRegistryKey, true);
-                if (key == null) return;
-
-                if (StartupSwitch.IsChecked == true)
-                {
-                    string? path = Environment.ProcessPath;
-                    if (!string.IsNullOrEmpty(path)) key.SetValue(AppName, $"\"{path}\"");
-                }
-                else
-                {
-                    key.DeleteValue(AppName, false);
-                }
+                StartupRegistration.SetEnabled(enabled);
             }
             catch (Exception ex)
             {
@@ -178,7 +153,7 @@ namespace Imel
                     "エラー",
                     System.Windows.MessageBoxButton.OK,
                     MessageBoxImage.Error);
-                StartupSwitch.IsChecked = !StartupSwitch.IsChecked;
+                StartupSwitch.IsChecked = StartupRegistration.IsEnabled();
             }
         }
 
@@ -187,6 +162,13 @@ namespace Imel
             r.Value = c.R;
             g.Value = c.G;
             b.Value = c.B;
+        }
+
+        // 確定前の入力値が範囲外でも、byte への変換で値が回り込まないようにする。
+        private static byte ToColorByte(double? value)
+        {
+            double v = value ?? 0;
+            return double.IsFinite(v) ? (byte)Math.Clamp(Math.Round(v), 0, 255) : (byte)0;
         }
 
         private void UpdateComboFromColor(ComboBox combo, Color c, bool isText)
@@ -240,9 +222,9 @@ namespace Imel
         {
             if (!_isInitialized) return;
 
-            byte r = (byte)(TextR.Value ?? 0);
-            byte g = (byte)(TextG.Value ?? 0);
-            byte b = (byte)(TextB.Value ?? 0);
+            byte r = ToColorByte(TextR.Value);
+            byte g = ToColorByte(TextG.Value);
+            byte b = ToColorByte(TextB.Value);
 
             _mainWindow.SettingTextColor = Color.FromRgb(r, g, b);
 
@@ -280,9 +262,9 @@ namespace Imel
         {
             if (!_isInitialized) return;
 
-            byte r = (byte)(BgR.Value ?? 0);
-            byte g = (byte)(BgG.Value ?? 0);
-            byte b = (byte)(BgB.Value ?? 0);
+            byte r = ToColorByte(BgR.Value);
+            byte g = ToColorByte(BgG.Value);
+            byte b = ToColorByte(BgB.Value);
 
             _mainWindow.SettingBackgroundColor = Color.FromRgb(r, g, b);
 

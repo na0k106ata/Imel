@@ -32,7 +32,7 @@ namespace Imel
         private const double ImeCheckInterval = 100.0;
         private bool _isImeCheckRunning = false;
         private bool _isClosing;
-        internal bool IsShuttingDown => _isClosing;
+        internal bool IsShuttingDown => _isClosing || App.IsExiting;
 
         private readonly record struct ImeTarget(IntPtr Foreground, IntPtr Focus, uint ThreadId, uint ProcessId);
 
@@ -53,8 +53,16 @@ namespace Imel
             get => _flipAtScreenEdge;
             set { _flipAtScreenEdge = value; ScheduleSettingsSave(); }
         }
-        public int SettingOffsetX { get => _offsetX; set { _offsetX = value; ScheduleSettingsSave(); } }
-        public int SettingOffsetY { get => _offsetY; set { _offsetY = value; ScheduleSettingsSave(); } }
+        public int SettingOffsetX
+        {
+            get => _offsetX;
+            set { _offsetX = Math.Clamp(value, AppSettings.MinOffset, AppSettings.MaxOffset); ScheduleSettingsSave(); }
+        }
+        public int SettingOffsetY
+        {
+            get => _offsetY;
+            set { _offsetY = Math.Clamp(value, AppSettings.MinOffset, AppSettings.MaxOffset); ScheduleSettingsSave(); }
+        }
         public bool SettingHideWhenCursorHidden
         {
             get => _hideWhenCursorHidden;
@@ -369,7 +377,7 @@ namespace Imel
 
         private void ExitApp()
         {
-            Application.Current.Shutdown();
+            App.RequestExit();
         }
 
         #endregion

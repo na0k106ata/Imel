@@ -141,16 +141,19 @@
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
                     <ui:CardControl.Header>
-                        <TextBlock Text="オフセット (DIP)" FontWeight="Medium"/>
+                        <StackPanel>
+                            <TextBlock Text="オフセット (DIP)" FontWeight="Medium"/>
+                            <TextBlock Text="-200～200 の範囲で指定" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                        </StackPanel>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Orientation="Horizontal" Margin="0,0,15,0">
                             <TextBlock Text="X:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetX" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetX" Minimum="-200" Maximum="200" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Y:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetY" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetY" Minimum="-200" Maximum="200" Width="80" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                     </StackPanel>
                 </ui:CardControl>
@@ -159,7 +162,7 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2">
-            <TextBlock Name="SaveStatusText" TextWrapping="Wrap" Foreground="DarkRed" Visibility="Collapsed"/>
+            <TextBlock Name="SaveStatusText" TextWrapping="Wrap" Foreground="{DynamicResource SystemFillColorCriticalBrush}" Visibility="Collapsed"/>
         <Grid Margin="0,10,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
