@@ -213,11 +213,21 @@ namespace Imel
             b.Value = c.B;
         }
 
-        // 確定前の入力値が範囲外でも、byte への変換で値が回り込まないようにする。
-        private static byte ToColorByte(double? value)
+        // 空欄や不正な入力は直前の値を維持し、範囲外でも byte への変換で値が回り込まないようにする。
+        private static byte ToColorByte(double? value, byte current)
         {
-            double v = value ?? 0;
-            return double.IsFinite(v) ? (byte)Math.Clamp(Math.Round(v), 0, 255) : (byte)0;
+            return value is double v && double.IsFinite(v) ? (byte)Math.Clamp(Math.Round(v), 0, 255) : current;
+        }
+
+        // 空欄や不正な入力は直前の値を維持する。適用後の値を入力欄にも反映する。
+        private void ApplyInt(Wpf.Ui.Controls.NumberBox box, Func<int> get, Action<int> set)
+        {
+            if (box.Value is double v && double.IsFinite(v))
+            {
+                int n = (int)Math.Clamp(Math.Round(v), -1_000_000, 1_000_000);
+                if (n != get()) set(n);
+            }
+            ShowClamped(box, get());
         }
 
         private void UpdateComboFromColor(ComboBox combo, Color c, bool isText)
@@ -271,11 +281,15 @@ namespace Imel
         {
             if (!_isInitialized) return;
 
-            byte r = ToColorByte(TextR.Value);
-            byte g = ToColorByte(TextG.Value);
-            byte b = ToColorByte(TextB.Value);
+            var current = _mainWindow.SettingTextColor;
+            byte r = ToColorByte(TextR.Value, current.R);
+            byte g = ToColorByte(TextG.Value, current.G);
+            byte b = ToColorByte(TextB.Value, current.B);
 
             _mainWindow.SettingTextColor = Color.FromRgb(r, g, b);
+            ShowClamped(TextR, r);
+            ShowClamped(TextG, g);
+            ShowClamped(TextB, b);
 
             _isInitialized = false;
             TextColorCombo.SelectedIndex = 5;
@@ -311,11 +325,15 @@ namespace Imel
         {
             if (!_isInitialized) return;
 
-            byte r = ToColorByte(BgR.Value);
-            byte g = ToColorByte(BgG.Value);
-            byte b = ToColorByte(BgB.Value);
+            var current = _mainWindow.SettingBackgroundColor;
+            byte r = ToColorByte(BgR.Value, current.R);
+            byte g = ToColorByte(BgG.Value, current.G);
+            byte b = ToColorByte(BgB.Value, current.B);
 
             _mainWindow.SettingBackgroundColor = Color.FromRgb(r, g, b);
+            ShowClamped(BgR, r);
+            ShowClamped(BgG, g);
+            ShowClamped(BgB, b);
 
             _isInitialized = false;
             BgColorCombo.SelectedIndex = 5;
@@ -325,18 +343,14 @@ namespace Imel
         private void BgOpacity_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            _mainWindow.SettingOpacity = (int)(BgOpacity.Value ?? 100);
-            ShowClamped(BgOpacity, _mainWindow.SettingOpacity);
+            ApplyInt(BgOpacity, () => _mainWindow.SettingOpacity, v => _mainWindow.SettingOpacity = v);
         }
 
         private void Offset_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            int x = (int)(OffsetX.Value ?? 0), y = (int)(OffsetY.Value ?? 0);
-            if (x != _mainWindow.SettingOffsetX) _mainWindow.SettingOffsetX = x;
-            if (y != _mainWindow.SettingOffsetY) _mainWindow.SettingOffsetY = y;
-            ShowClamped(OffsetX, _mainWindow.SettingOffsetX);
-            ShowClamped(OffsetY, _mainWindow.SettingOffsetY);
+            ApplyInt(OffsetX, () => _mainWindow.SettingOffsetX, v => _mainWindow.SettingOffsetX = v);
+            ApplyInt(OffsetY, () => _mainWindow.SettingOffsetY, v => _mainWindow.SettingOffsetY = v);
         }
 
         // 本体側で丸められた値を、入力欄の表示にも反映する。

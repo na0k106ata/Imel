@@ -236,8 +236,8 @@ namespace Imel
             var helper = new WindowInteropHelper(this);
             int exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
 
-            // Alt+Tabやタスクバーに出ないツールウィンドウとして扱います。
-            SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
+            // Alt+Tabやタスクバーに出ないツールウィンドウとして扱い、表示してもフォーカスを奪わないようにします。
+            SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
 
             _windowHandle = helper.Handle;
             SetIndicatorVisibility(Visibility.Hidden);
@@ -695,6 +695,7 @@ namespace Imel
         [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TOOLWINDOW = 0x00000080;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
 
         [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO pci);
         [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
