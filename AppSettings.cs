@@ -60,6 +60,15 @@ namespace Imel
         /// <summary>通知済みのバージョン。同じバージョンを繰り返し通知しないために使う。</summary>
         public string? NotifiedUpdateVersion { get; set; }
 
+        /// <summary>最後の確認が失敗したか。再起動後も短い間隔で再確認するために使う。</summary>
+        public bool LastUpdateCheckFailed { get; set; }
+
+        /// <summary>前回見つけた新しいバージョン。再起動後も更新の案内を残すために使う。</summary>
+        public string? AvailableUpdateVersion { get; set; }
+
+        /// <summary>前回見つけたリリースページの URL。</summary>
+        public string? AvailableUpdateUrl { get; set; }
+
         // --- 色設定 (RGB) ---
 
         /// <summary>

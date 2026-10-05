@@ -84,6 +84,20 @@ try { UpdateChecker.ParseLatestRelease(@"{""tag_name"":""latest""}", current); }
 catch (FormatException) { invalidTagThrows = true; }
 Assert("Invalid tag reports failure", invalidTagThrows);
 Assert("New settings do not check for updates", !new AppSettings().CheckForUpdates);
+var now = new DateTime(2026, 10, 6, 12, 0, 0, DateTimeKind.Utc);
+Assert("Never checked is due", UpdateChecker.IsCheckDue(null, false, now));
+Assert("Recent check is not due", !UpdateChecker.IsCheckDue(now.AddHours(-23), false, now));
+Assert("24 hours later is due", UpdateChecker.IsCheckDue(now.AddHours(-24), false, now));
+Assert("Recent failure waits for retry", !UpdateChecker.IsCheckDue(now.AddMinutes(-30), true, now));
+Assert("Failure retries after 1 hour", UpdateChecker.IsCheckDue(now.AddHours(-1), true, now));
+Assert("Failure retry survives restart (not 24h)", UpdateChecker.IsCheckDue(now.AddHours(-2), true, now));
+Assert("Future check time is due", UpdateChecker.IsCheckDue(now.AddDays(30), false, now));
+var restored = UpdateChecker.RestoreUpdate("1.0.10", "https://github.com/tabunugoku/Imel/releases/tag/v1.0.10", current);
+Assert("Saved update restored", restored != null && restored.Version == new Version(1, 0, 10) && restored.ReleaseUrl.EndsWith("/v1.0.10"));
+Assert("Saved update already installed is dropped", UpdateChecker.RestoreUpdate("1.0.9", null, current) == null);
+Assert("Saved update missing is dropped", UpdateChecker.RestoreUpdate(null, null, current) == null);
+Assert("Saved update garbage is dropped", UpdateChecker.RestoreUpdate("abc", null, current) == null);
+Assert("Saved foreign URL replaced", UpdateChecker.RestoreUpdate("2.0.0", "https://example.com/x", current)!.ReleaseUrl == "https://github.com/tabunugoku/Imel/releases/latest");
 Assert("Startup path unquoted", StartupRegistration.GetExecutablePath(@"  C:\Apps\Imel.exe ") == @"C:\Apps\Imel.exe");
 
 string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ImelTests-" + Guid.NewGuid().ToString("N"));
@@ -127,8 +141,12 @@ try
     Assert("Save update settings", AppSettings.Save(new AppSettings { CheckForUpdates = true, LastUpdateCheckUtc = checkedAt, NotifiedUpdateVersion = "1.0.10" }, out _, path));
     var updateSettings = AppSettings.Load(path);
     Assert("Update settings survive reload", updateSettings.CheckForUpdates && updateSettings.LastUpdateCheckUtc == checkedAt && updateSettings.NotifiedUpdateVersion == "1.0.10");
+    Assert("Save update result", AppSettings.Save(new AppSettings { CheckForUpdates = true, LastUpdateCheckFailed = true, AvailableUpdateVersion = "1.0.13", AvailableUpdateUrl = "https://github.com/tabunugoku/Imel/releases/tag/v1.0.13" }, out _, path));
+    var updateResult = AppSettings.Load(path);
+    Assert("Update result survives reload", updateResult.LastUpdateCheckFailed && updateResult.AvailableUpdateVersion == "1.0.13" && updateResult.AvailableUpdateUrl!.EndsWith("v1.0.13"));
     System.IO.File.WriteAllText(path, "{\"OffsetX\":42}");
     Assert("Existing settings without update option default OFF", !AppSettings.Load(path).CheckForUpdates);
+    Assert("Existing settings without update result have none", !AppSettings.Load(path).LastUpdateCheckFailed && AppSettings.Load(path).AvailableUpdateVersion == null);
 }
 finally
 {
