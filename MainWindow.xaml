@@ -9,6 +9,7 @@
         Topmost="True" 
         ShowInTaskbar="False"
         Focusable="False"
+        ShowActivated="False"
         IsHitTestVisible="False">
 
     <Border x:Name="MainBorder" CornerRadius="4" Background="#AA000000" Padding="2">
