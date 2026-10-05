@@ -32,6 +32,25 @@ namespace Imel
             return client;
         }
 
+        internal static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
+        internal static readonly TimeSpan RetryInterval = TimeSpan.FromHours(1);
+
+        // 前回の確認から間隔が過ぎたか。記録が未来の日時（時計の巻き戻し）の場合も、確認が止まらないよう期限切れとみなす。
+        internal static bool IsCheckDue(DateTime? lastCheckUtc, bool lastCheckFailed, DateTime nowUtc)
+        {
+            if (lastCheckUtc is not DateTime last || last > nowUtc) return true;
+            return nowUtc - last >= (lastCheckFailed ? RetryInterval : CheckInterval);
+        }
+
+        // 保存しておいた更新情報を復元する。すでに適用済み（現在以下）や読み取れない場合は null。
+        internal static UpdateInfo? RestoreUpdate(string? version, string? url, Version current)
+        {
+            if (!TryParseVersion(version, out var latest) || latest <= current) return null;
+            if (url == null || !url.StartsWith(ReleasePagePrefix, StringComparison.Ordinal))
+                url = ReleasePagePrefix + "latest";
+            return new UpdateInfo(latest, url);
+        }
+
         internal static Version GetCurrentVersion()
         {
             var version = typeof(UpdateChecker).Assembly.GetName().Version ?? new Version(0, 0, 0);

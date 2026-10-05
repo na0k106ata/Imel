@@ -51,8 +51,6 @@ namespace Imel
         private Forms.ToolStripMenuItem _updateMenuItem = null!;
         private Forms.ToolStripSeparator _updateMenuSeparator = null!;
         private string? _notifiedUpdateVersion;
-        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(24);
-        private static readonly TimeSpan UpdateRetryInterval = TimeSpan.FromHours(1);
 
         internal UpdateCheckState UpdateState { get; private set; } = UpdateCheckState.NotChecked;
         internal UpdateInfo? AvailableUpdate { get; private set; }
@@ -248,6 +246,7 @@ namespace Imel
 
             if (SettingCheckForUpdates)
             {
+                ApplyUpdateStatusToTray();
                 _updateTimer.Start();
                 // 前回の確認から間もない場合は、起動のたびに問い合わせない。
                 if (IsUpdateCheckDue()) _ = CheckForUpdatesAsync();
@@ -308,6 +307,16 @@ namespace Imel
             LastUpdateCheckUtc = settings.LastUpdateCheckUtc;
             _notifiedUpdateVersion = settings.NotifiedUpdateVersion;
 
+            // 前回の確認結果を復元し、再起動後も更新の案内と再確認の間隔を引き継ぐ。
+            if (settings.CheckForUpdates)
+            {
+                AvailableUpdate = UpdateChecker.RestoreUpdate(settings.AvailableUpdateVersion,
+                    settings.AvailableUpdateUrl, UpdateChecker.GetCurrentVersion());
+                if (settings.LastUpdateCheckUtc != null)
+                    UpdateState = settings.LastUpdateCheckFailed ? UpdateCheckState.Failed
+                        : AvailableUpdate != null ? UpdateCheckState.UpdateAvailable : UpdateCheckState.UpToDate;
+            }
+
             SettingTextColor = Color.FromRgb(settings.TextR, settings.TextG, settings.TextB);
             SettingBackgroundColor = Color.FromRgb(settings.BgR, settings.BgG, settings.BgB);
         }
@@ -341,6 +350,9 @@ namespace Imel
                 CheckForUpdates = SettingCheckForUpdates,
                 LastUpdateCheckUtc = LastUpdateCheckUtc,
                 NotifiedUpdateVersion = _notifiedUpdateVersion,
+                LastUpdateCheckFailed = UpdateState == UpdateCheckState.Failed,
+                AvailableUpdateVersion = AvailableUpdate?.Version.ToString(),
+                AvailableUpdateUrl = AvailableUpdate?.ReleaseUrl,
                 TextR = SettingTextColor.R,
                 TextG = SettingTextColor.G,
                 TextB = SettingTextColor.B,
@@ -498,9 +510,7 @@ namespace Imel
 
         private bool IsUpdateCheckDue()
         {
-            if (LastUpdateCheckUtc is not DateTime last) return true;
-            var wait = UpdateState == UpdateCheckState.Failed ? UpdateRetryInterval : UpdateCheckInterval;
-            return DateTime.UtcNow - last >= wait;
+            return UpdateChecker.IsCheckDue(LastUpdateCheckUtc, UpdateState == UpdateCheckState.Failed, DateTime.UtcNow);
         }
 
         private void StopUpdateChecks()
