@@ -36,6 +36,11 @@
 		<Copyright>Copyright © 2025 tabunugoku</Copyright>
 	</PropertyGroup>
 
+	<!-- Releaseビルドでは、exe/pdb にビルドしたPCのフォルダパスを埋め込まない（/_/ に置き換える） -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
 	<!-- アイコンをプログラム内からストリームとして読み込めるように埋め込みリソース化 -->
 	<!-- GetManifestResourceStreamなどで実行時にアイコンデータを取得するために必要です -->
 	<ItemGroup>
