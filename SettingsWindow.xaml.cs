@@ -326,13 +326,26 @@ namespace Imel
         {
             if (!_isInitialized) return;
             _mainWindow.SettingOpacity = (int)(BgOpacity.Value ?? 100);
+            ShowClamped(BgOpacity, _mainWindow.SettingOpacity);
         }
 
         private void Offset_Changed(object sender, RoutedEventArgs e)
         {
             if (!_isInitialized) return;
-            _mainWindow.SettingOffsetX = (int)(OffsetX.Value ?? 0);
-            _mainWindow.SettingOffsetY = (int)(OffsetY.Value ?? 0);
+            int x = (int)(OffsetX.Value ?? 0), y = (int)(OffsetY.Value ?? 0);
+            if (x != _mainWindow.SettingOffsetX) _mainWindow.SettingOffsetX = x;
+            if (y != _mainWindow.SettingOffsetY) _mainWindow.SettingOffsetY = y;
+            ShowClamped(OffsetX, _mainWindow.SettingOffsetX);
+            ShowClamped(OffsetY, _mainWindow.SettingOffsetY);
+        }
+
+        // 本体側で丸められた値を、入力欄の表示にも反映する。
+        private void ShowClamped(Wpf.Ui.Controls.NumberBox box, int applied)
+        {
+            if (box.Value == applied) return;
+            _isInitialized = false;
+            box.Value = applied;
+            _isInitialized = true;
         }
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)

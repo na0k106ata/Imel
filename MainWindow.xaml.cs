@@ -249,7 +249,8 @@ namespace Imel
             if (SettingCheckForUpdates)
             {
                 _updateTimer.Start();
-                _ = CheckForUpdatesAsync();
+                // 前回の確認から間もない場合は、起動のたびに問い合わせない。
+                if (IsUpdateCheckDue()) _ = CheckForUpdatesAsync();
             }
         }
 
@@ -266,6 +267,7 @@ namespace Imel
                 System.Windows.MessageBox.Show("設定を保存できませんでした。\n" + SettingsSaveError,
                     "Imel", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+            _notifyIcon.ContextMenuStrip?.Dispose();
             _notifyIcon.Dispose();
         }
 
