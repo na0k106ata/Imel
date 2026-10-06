@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using static Imel.NativeMethods;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -693,64 +694,6 @@ namespace Imel
 
             return ScreenPlacement.PlaceIndicator(_windowHandle, mousePt.X, mousePt.Y,
                 Width, Height, SettingOffsetX + 5.0, SettingOffsetY + 5.0, SettingFlipAtScreenEdge);
-        }
-
-        #endregion
-
-        #region Win32 API Definitions
-
-        [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_NOACTIVATE = 0x08000000;
-
-        [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO pci);
-        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-        [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-        [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
-
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        static extern IntPtr SendMessageTimeout(
-            IntPtr hWnd,
-            uint Msg,
-            IntPtr wParam,
-            IntPtr lParam,
-            uint fuFlags,
-            uint uTimeout,
-            out IntPtr lpdwResult);
-
-        [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
-
-        const int WM_IME_CONTROL = 0x0283;
-        const int CURSOR_SHOWING = 0x00000001;
-        const uint SMTO_ABORTIFHUNG = 0x0002;
-
-        [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
-        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct CURSORINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hCursor;
-            public POINT ptScreenPos;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct GUITHREADINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hwndActive;
-            public IntPtr hwndFocus;
-            public IntPtr hwndCapture;
-            public IntPtr hwndMenuOwner;
-            public IntPtr hwndMoveSize;
-            public IntPtr hwndCaret;
-            public RECT rcCaret;
         }
 
         #endregion

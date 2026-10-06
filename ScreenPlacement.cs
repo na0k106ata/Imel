@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using static Imel.NativeMethods;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -54,21 +55,5 @@ namespace Imel
             int top = Math.Clamp(rect.Top, info.Work.Top, info.Work.Bottom - height);
             SetWindowPos(handle, IntPtr.Zero, left, top, width, height, NoZOrder | NoActivate);
         }
-
-        [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
-        [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
-        [StructLayout(LayoutKind.Sequential)] private struct MONITORINFO
-        {
-            public int Size;
-            public RECT Monitor, Work;
-            public uint Flags;
-        }
-        [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(POINT point, uint flags);
-        [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
-        [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
-        [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
-        [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr window, out RECT rect);
-        [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr window, IntPtr after,
-            int x, int y, int width, int height, uint flags);
     }
 }
