@@ -2,6 +2,13 @@ using System;
 using Imel;
 
 int passed = 0;
+var failures = new System.Collections.Generic.List<string>();
+// 失敗しても最後まで実行し、全件の失敗を最後にまとめて表示する。
+void Fail(string name, string detail)
+{
+    failures.Add(name);
+    Console.WriteLine($"FAIL {name}: {detail}");
+}
 void Check(string name, bool openSuccess, bool isOpen, bool conversionSuccess,
     int mode, string? expected, int expectedCalls, bool hasIme = true, bool hasTarget = true)
 {
@@ -15,10 +22,22 @@ void Check(string name, bool openSuccess, bool isOpen, bool conversionSuccess,
         result = (IntPtr)mode;
         return conversionSuccess;
     }
-    string? actual = ImeStatusReader.Read(hasTarget ? (IntPtr)10 : IntPtr.Zero,
-        target => hasIme ? (IntPtr)20 : IntPtr.Zero, Query);
+    string? actual;
+    try
+    {
+        actual = ImeStatusReader.Read(hasTarget ? (IntPtr)10 : IntPtr.Zero,
+            target => hasIme ? (IntPtr)20 : IntPtr.Zero, Query);
+    }
+    catch (Exception ex)
+    {
+        Fail(name, ex.Message);
+        return;
+    }
     if (actual != expected || calls != expectedCalls)
-        throw new Exception($"{name}: actual={actual ?? "null"}, calls={calls}");
+    {
+        Fail(name, $"actual={actual ?? "null"}, calls={calls}");
+        return;
+    }
     Console.WriteLine($"PASS {name}");
     passed++;
 }
@@ -37,7 +56,11 @@ Check("Additional conversion flags", true, true, true, 9 | 0x10, "あ", 2);
 Console.WriteLine($"{passed} checks passed");
 void Assert(string name, bool condition)
 {
-    if (!condition) throw new Exception(name);
+    if (!condition)
+    {
+        Fail(name, "condition is false");
+        return;
+    }
     Console.WriteLine("PASS " + name);
     passed++;
 }
@@ -97,7 +120,7 @@ Assert("Saved update restored", restored != null && restored.Version == new Vers
 Assert("Saved update already installed is dropped", UpdateChecker.RestoreUpdate("1.0.9", null, current) == null);
 Assert("Saved update missing is dropped", UpdateChecker.RestoreUpdate(null, null, current) == null);
 Assert("Saved update garbage is dropped", UpdateChecker.RestoreUpdate("abc", null, current) == null);
-Assert("Saved foreign URL replaced", UpdateChecker.RestoreUpdate("2.0.0", "https://example.com/x", current)!.ReleaseUrl == "https://github.com/tabunugoku/Imel/releases/latest");
+Assert("Saved foreign URL replaced", UpdateChecker.RestoreUpdate("2.0.0", "https://example.com/x", current)?.ReleaseUrl == "https://github.com/tabunugoku/Imel/releases/latest");
 Assert("Startup path unquoted", StartupRegistration.GetExecutablePath(@"  C:\Apps\Imel.exe ") == @"C:\Apps\Imel.exe");
 
 string directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ImelTests-" + Guid.NewGuid().ToString("N"));
@@ -143,10 +166,14 @@ try
     Assert("Update settings survive reload", updateSettings.CheckForUpdates && updateSettings.LastUpdateCheckUtc == checkedAt && updateSettings.NotifiedUpdateVersion == "1.0.10");
     Assert("Save update result", AppSettings.Save(new AppSettings { CheckForUpdates = true, LastUpdateCheckFailed = true, AvailableUpdateVersion = "1.0.13", AvailableUpdateUrl = "https://github.com/tabunugoku/Imel/releases/tag/v1.0.13" }, out _, path));
     var updateResult = AppSettings.Load(path);
-    Assert("Update result survives reload", updateResult.LastUpdateCheckFailed && updateResult.AvailableUpdateVersion == "1.0.13" && updateResult.AvailableUpdateUrl!.EndsWith("v1.0.13"));
+    Assert("Update result survives reload", updateResult.LastUpdateCheckFailed && updateResult.AvailableUpdateVersion == "1.0.13" && updateResult.AvailableUpdateUrl?.EndsWith("v1.0.13") == true);
     System.IO.File.WriteAllText(path, "{\"OffsetX\":42}");
     Assert("Existing settings without update option default OFF", !AppSettings.Load(path).CheckForUpdates);
     Assert("Existing settings without update result have none", !AppSettings.Load(path).LastUpdateCheckFailed && AppSettings.Load(path).AvailableUpdateVersion == null);
+}
+catch (Exception ex)
+{
+    Fail("Unexpected exception in settings tests", ex.ToString());
 }
 finally
 {
@@ -155,4 +182,11 @@ finally
         System.IO.File.Delete(file);
     System.IO.Directory.Delete(directory);
 }
+if (failures.Count > 0)
+{
+    Console.WriteLine($"{failures.Count} FAILED, {passed} passed");
+    foreach (string name in failures) Console.WriteLine("  - " + name);
+    return 1;
+}
 Console.WriteLine($"{passed} total checks passed");
+return 0;
