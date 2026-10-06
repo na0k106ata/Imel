@@ -531,15 +531,15 @@ namespace Imel
             _notifyIcon.Text = update != null ? NotifyIconText + " - 更新があります" : NotifyIconText;
             if (update == null) return;
 
-            _updateMenuItem.Text = $"v{update.Version} をダウンロード...";
+            _updateMenuItem.Text = $"v{update.Version}をダウンロード...";
 
             // 同じバージョンの通知は1回だけにする。
             string version = update.Version.ToString();
             if (_notifiedUpdateVersion == version) return;
             _notifiedUpdateVersion = version;
             ScheduleSettingsSave();
-            _notifyIcon.ShowBalloonTip(10000, "Imel の新しいバージョンがあります",
-                $"v{update.Version} が公開されました（現在 v{UpdateChecker.GetCurrentVersion()}）。クリックするとダウンロードページを開きます。",
+            _notifyIcon.ShowBalloonTip(10000, "Imelの新しいバージョンがあります",
+                $"v{update.Version}が公開されました（現在 v{UpdateChecker.GetCurrentVersion()}）。クリックするとダウンロードページを開きます。",
                 Forms.ToolTipIcon.Info);
         }
 

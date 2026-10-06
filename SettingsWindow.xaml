@@ -37,7 +37,7 @@
                     <ui:CardControl.Header>
                         <StackPanel>
                             <TextBlock Text="自動非表示" FontWeight="Medium"/>
-                            <TextBlock Text="マウスカーソル消失時に隠す (動画視聴等)" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
+                            <TextBlock Text="マウスカーソルが非表示のときに隠す（動画視聴中など）" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
                     <ui:ToggleSwitch Name="HideCursorSwitch" Click="HideCursorSwitch_Click"/>
