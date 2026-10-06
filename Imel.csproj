@@ -26,7 +26,7 @@
 
 		<!-- アプリケーションのバージョン情報 -->
 		<!-- バージョンは Version だけを更新する（AssemblyVersion / FileVersion は Version から導出） -->
-		<Version>1.0.14</Version>
+		<Version>1.0.15</Version>
 		<AssemblyVersion>$(Version).0</AssemblyVersion>
 		<FileVersion>$(Version).0</FileVersion>
 
