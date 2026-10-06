@@ -52,11 +52,9 @@ nav .links a:hover{color:var(--text)}
 .btn.ghost:hover{background:var(--card);transform:translateY(-3px)}
 
 .hero{padding:80px 20px 60px;text-align:center}
-h1{word-break:keep-all;text-wrap:balance;font-size:clamp(2rem,8vw,4.4rem);line-height:1.1;margin:0 0 18px;letter-spacing:-.02em}
+h1{white-space:nowrap;font-size:clamp(1.4rem,6.6vw,4.4rem);line-height:1.1;margin:0 0 18px;letter-spacing:-.02em}
 .pn{margin-right:-.5em}
 h1 .grad{padding-right:.5em;margin-right:-.5em}
-.sp{display:none}
-@media(max-width:700px){.sp{display:inline}}
 .lead{text-wrap:balance;max-width:600px;margin:0 auto 32px;color:var(--muted);font-size:1.08rem}
 .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s ease}
@@ -154,7 +152,7 @@ footer a{text-decoration:underline}
 </div></nav>
 
 <header class="hero wrap" id="top">
-  <h1 class="reveal">入力モードが<br class="sp"><span class="grad">一目でわかる<span class="pn">。</span></span></h1>
+  <h1 class="reveal">入力モードが<span class="grad">一目でわかる<span class="pn">。</span></span></h1>
   <p class="lead reveal">マウスカーソルのすぐ横に、「あ」「_A」などの現在のIME状態を表示します<span class="pn">。</span></p>
   <div class="cta reveal">
     <a class="btn primary" href="https://github.com/tabunugoku/Imel/releases/latest">最新版をダウンロード</a>
