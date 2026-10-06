@@ -19,8 +19,9 @@ namespace Imel
                 using var key = Registry.CurrentUser.OpenSubKey(RunKey, false);
                 return key?.GetValue(AppName) != null;
             }
-            catch
+            catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Imel: スタートアップ登録を確認できません: {ex.Message}");
                 return false;
             }
         }
@@ -55,9 +56,10 @@ namespace Imel
 
                 key.SetValue(AppName, $"\"{current}\"");
             }
-            catch
+            catch (Exception ex)
             {
                 // 自動実行の更新に失敗しても、アプリの起動は続ける。
+                System.Diagnostics.Debug.WriteLine($"Imel: スタートアップ登録を更新できません: {ex.Message}");
             }
         }
 

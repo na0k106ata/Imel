@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using static Imel.NativeMethods;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,8 +22,8 @@ namespace Imel
     {
         #region Fields
 
-        private DispatcherTimer _timer;
-        private Forms.NotifyIcon _notifyIcon = null!;
+        private readonly DispatcherTimer _timer;
+        private TrayIcon _tray = null!;
 
         // IME状態の取得は比較的重いため、カーソル追従とは別に頻度を制限します。
         private readonly DispatcherTimer _imeTimer;
@@ -43,13 +44,9 @@ namespace Imel
         private const double BaseSize = 24.0;
         private const double BaseFontSize = 13.0;
 
-        private const string NotifyIconText = "Imel (IME Indicator)";
-
         // 更新の確認は既定でOFF。ONのときだけ GitHub へ問い合わせる。
         private readonly DispatcherTimer _updateTimer;
         private CancellationTokenSource? _updateCts;
-        private Forms.ToolStripMenuItem _updateMenuItem = null!;
-        private Forms.ToolStripSeparator _updateMenuSeparator = null!;
         private string? _notifiedUpdateVersion;
 
         internal UpdateCheckState UpdateState { get; private set; } = UpdateCheckState.NotChecked;
@@ -193,7 +190,7 @@ namespace Imel
                 ImeStatusText.Foreground = new SolidColorBrush(SettingTextColor);
             }
 
-            InitializeNotifyIcon();
+            _tray = new TrayIcon(OpenSettings, ExitApp, OpenReleasePage);
 
             // 設定画面を開いている間も追従が遅れにくいよう、位置更新タイマーは高めの優先度で動かします。
             _timer = new DispatcherTimer(DispatcherPriority.Send);
@@ -266,19 +263,16 @@ namespace Imel
                 System.Windows.MessageBox.Show("設定を保存できませんでした。\n" + SettingsSaveError,
                     "Imel", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            _notifyIcon.ContextMenuStrip?.Dispose();
-            _notifyIcon.Dispose();
+            _tray.Dispose();
         }
 
         private ImageSource? CreateAppIconImageSource()
         {
             try
             {
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                using var stream = assembly.GetManifestResourceStream("Imel.Imel.ico");
-                if (stream == null) return null;
+                using var icon = TrayIcon.LoadAppIcon();
+                if (icon == null) return null;
 
-                using var icon = new Drawing.Icon(stream);
                 var imageSource = Imaging.CreateBitmapSourceFromHIcon(
                     icon.Handle,
                     Int32Rect.Empty,
@@ -287,8 +281,9 @@ namespace Imel
                 if (imageSource.CanFreeze) imageSource.Freeze();
                 return imageSource;
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: 設定画面のアイコンを作れません: {ex}");
                 return null;
             }
         }
@@ -405,44 +400,7 @@ namespace Imel
 
         #endregion
 
-        #region NotifyIcon & Settings
-
-        private void InitializeNotifyIcon()
-        {
-            _notifyIcon = new Forms.NotifyIcon();
-            try
-            {
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                using var stream = assembly.GetManifestResourceStream("Imel.Imel.ico");
-                _notifyIcon.Icon = stream != null ? new Drawing.Icon(stream) : Drawing.SystemIcons.Application;
-            }
-            catch
-            {
-                _notifyIcon.Icon = Drawing.SystemIcons.Application;
-            }
-
-            _notifyIcon.Text = NotifyIconText;
-            _notifyIcon.Visible = true;
-            _notifyIcon.BalloonTipClicked += (s, e) => OpenReleasePage();
-
-            var contextMenu = new Forms.ContextMenuStrip();
-            // 更新があるときだけ表示する。
-            _updateMenuItem = new Forms.ToolStripMenuItem { Available = false };
-            _updateMenuItem.Click += (s, e) => OpenReleasePage();
-            _updateMenuSeparator = new Forms.ToolStripSeparator { Available = false };
-            contextMenu.Items.Add(_updateMenuItem);
-            contextMenu.Items.Add(_updateMenuSeparator);
-            var settingsItem = new Forms.ToolStripMenuItem("設定...");
-            settingsItem.Click += (s, e) => OpenSettings();
-            var exitItem = new Forms.ToolStripMenuItem("終了");
-            exitItem.Click += (s, e) => ExitApp();
-
-            contextMenu.Items.Add(settingsItem);
-            contextMenu.Items.Add(new Forms.ToolStripSeparator());
-            contextMenu.Items.Add(exitItem);
-            _notifyIcon.ContextMenuStrip = contextMenu;
-            _notifyIcon.DoubleClick += (s, e) => OpenSettings();
-        }
+        #region Settings Window & Exit
 
         private void OpenSettings()
         {
@@ -491,9 +449,10 @@ namespace Imel
                 // OFFへの切り替えや終了で中止した結果は使わない。
                 return;
             }
-            catch
+            catch (Exception ex)
             {
                 // 通信できない場合は通知せず、設定画面にだけ表示する。前回見つけた更新の情報は残す。
+                Debug.WriteLine($"Imel: 更新の確認に失敗しました: {ex.Message}");
                 UpdateState = UpdateCheckState.Failed;
             }
             finally
@@ -526,21 +485,15 @@ namespace Imel
         private void ApplyUpdateStatusToTray()
         {
             var update = SettingCheckForUpdates ? AvailableUpdate : null;
-            _updateMenuItem.Available = update != null;
-            _updateMenuSeparator.Available = update != null;
-            _notifyIcon.Text = update != null ? NotifyIconText + " - 更新があります" : NotifyIconText;
+            _tray.ShowUpdate(update);
             if (update == null) return;
-
-            _updateMenuItem.Text = $"v{update.Version}をダウンロード...";
 
             // 同じバージョンの通知は1回だけにする。
             string version = update.Version.ToString();
             if (_notifiedUpdateVersion == version) return;
             _notifiedUpdateVersion = version;
             ScheduleSettingsSave();
-            _notifyIcon.ShowBalloonTip(10000, "Imelの新しいバージョンがあります",
-                $"v{update.Version}が公開されました（現在 v{UpdateChecker.GetCurrentVersion()}）。クリックするとダウンロードページを開きます。",
-                Forms.ToolTipIcon.Info);
+            _tray.ShowUpdateBalloon(update, UpdateChecker.GetCurrentVersion());
         }
 
         public void OpenReleasePage()
@@ -567,8 +520,9 @@ namespace Imel
             {
                 ProcessUpdate();
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: 位置の更新に失敗しました: {ex}");
                 SetIndicatorVisibility(Visibility.Hidden);
             }
         }
@@ -644,8 +598,9 @@ namespace Imel
                 // 非表示中にカーソルが移動していても、古い場所に表示しない。
                 SetIndicatorVisibility(UpdatePosition() ? Visibility.Visible : Visibility.Hidden);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: IME状態の確認に失敗しました: {ex}");
                 if (!_isClosing) SetIndicatorVisibility(Visibility.Hidden);
             }
             finally
@@ -685,64 +640,6 @@ namespace Imel
 
             return ScreenPlacement.PlaceIndicator(_windowHandle, mousePt.X, mousePt.Y,
                 Width, Height, SettingOffsetX + 5.0, SettingOffsetY + 5.0, SettingFlipAtScreenEdge);
-        }
-
-        #endregion
-
-        #region Win32 API Definitions
-
-        [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TOOLWINDOW = 0x00000080;
-        private const int WS_EX_NOACTIVATE = 0x08000000;
-
-        [DllImport("user32.dll")] static extern bool GetCursorInfo(ref CURSORINFO pci);
-        [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-        [DllImport("user32.dll")] static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
-        [DllImport("imm32.dll")] static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
-
-        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        static extern IntPtr SendMessageTimeout(
-            IntPtr hWnd,
-            uint Msg,
-            IntPtr wParam,
-            IntPtr lParam,
-            uint fuFlags,
-            uint uTimeout,
-            out IntPtr lpdwResult);
-
-        [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)] static extern bool GetCursorPos(out POINT lpPoint);
-
-        const int WM_IME_CONTROL = 0x0283;
-        const int CURSOR_SHOWING = 0x00000001;
-        const uint SMTO_ABORTIFHUNG = 0x0002;
-
-        [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X; public int Y; }
-        [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct CURSORINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hCursor;
-            public POINT ptScreenPos;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct GUITHREADINFO
-        {
-            public int cbSize;
-            public int flags;
-            public IntPtr hwndActive;
-            public IntPtr hwndFocus;
-            public IntPtr hwndCapture;
-            public IntPtr hwndMenuOwner;
-            public IntPtr hwndMoveSize;
-            public IntPtr hwndCaret;
-            public RECT rcCaret;
         }
 
         #endregion

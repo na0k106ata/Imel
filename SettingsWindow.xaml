@@ -30,7 +30,7 @@
                             <TextBlock Text="Windows起動時に自動的に開始する" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ui:ToggleSwitch Name="StartupSwitch" Click="StartupSwitch_Click"/>
+                    <ui:ToggleSwitch Name="StartupSwitch" AutomationProperties.Name="スタートアップ" Click="StartupSwitch_Click"/>
                 </ui:CardControl>
 
                 <ui:CardControl Icon="{ui:SymbolIcon EyeOff24}" Margin="0,0,0,4">
@@ -40,7 +40,7 @@
                             <TextBlock Text="マウスカーソルが非表示のときに隠す（動画視聴中など）" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ui:ToggleSwitch Name="HideCursorSwitch" Click="HideCursorSwitch_Click"/>
+                    <ui:ToggleSwitch Name="HideCursorSwitch" AutomationProperties.Name="自動非表示" Click="HideCursorSwitch_Click"/>
                 </ui:CardControl>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowSync24}" Margin="0,0,0,4">
@@ -50,7 +50,7 @@
                             <TextBlock Text="新しいバージョンを通知する (既定: OFF)" FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ui:ToggleSwitch Name="UpdateCheckSwitch" Click="UpdateCheckSwitch_Click"/>
+                    <ui:ToggleSwitch Name="UpdateCheckSwitch" AutomationProperties.Name="更新の確認" Click="UpdateCheckSwitch_Click"/>
                 </ui:CardControl>
 
                 <ui:Card Name="UpdateDetailCard" Margin="0,0,0,4" Visibility="Collapsed">
@@ -86,7 +86,7 @@
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Name="IntervalValueText" Text="16 ms" VerticalAlignment="Center" Width="40" TextAlignment="Right" Margin="0,0,10,0"/>
-                        <Slider Name="IntervalSlider" Minimum="2" Maximum="100" Width="120"
+                        <Slider Name="IntervalSlider" AutomationProperties.Name="描画間隔" Minimum="2" Maximum="100" Width="120"
                                 TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="IntervalSlider_ValueChanged"/>
                     </StackPanel>
@@ -102,7 +102,7 @@
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Name="ScaleValueText" Text="1.0 x" VerticalAlignment="Center" Width="40" TextAlignment="Right" Margin="0,0,10,0"/>
-                        <Slider Name="ScaleSlider" Minimum="0.5" Maximum="2.0" Width="120"
+                        <Slider Name="ScaleSlider" AutomationProperties.Name="サイズ（倍率）" Minimum="0.5" Maximum="2.0" Width="120"
                                 TickFrequency="0.1" IsSnapToTickEnabled="True"
                                 ValueChanged="ScaleSlider_ValueChanged"/>
                     </StackPanel>
@@ -113,7 +113,7 @@
                         <TextBlock Text="文字色" FontWeight="Medium" VerticalAlignment="Center"/>
                     </ui:CardControl.Header>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <ComboBox Name="TextColorCombo" SelectionChanged="TextColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <ComboBox Name="TextColorCombo" AutomationProperties.Name="文字色" SelectionChanged="TextColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
                             <ComboBoxItem Content="白 (White)"/>
                             <ComboBoxItem Content="黒 (Black)"/>
                             <ComboBoxItem Content="赤 (Red)"/>
@@ -122,9 +122,9 @@
                             <ComboBoxItem Content="カスタム"/>
                         </ComboBox>
 
-                        <ui:NumberBox Name="TextR" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                        <ui:NumberBox Name="TextG" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                        <ui:NumberBox Name="TextB" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
+                        <ui:NumberBox Name="TextR" AutomationProperties.Name="文字色 赤 (R)" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                        <ui:NumberBox Name="TextG" AutomationProperties.Name="文字色 緑 (G)" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                        <ui:NumberBox Name="TextB" AutomationProperties.Name="文字色 青 (B)" Maximum="255" Minimum="0" Width="100" ValueChanged="TextColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
                     </StackPanel>
                 </ui:CardControl>
 
@@ -136,7 +136,7 @@
                     </ui:CardControl.Header>
                     <StackPanel HorizontalAlignment="Right">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,4">
-                            <ComboBox Name="BgColorCombo" SelectionChanged="BgColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <ComboBox Name="BgColorCombo" AutomationProperties.Name="背景色" SelectionChanged="BgColorCombo_SelectionChanged" Width="120" Margin="0,0,10,0" VerticalAlignment="Center">
                                 <ComboBoxItem Content="黒 (Black)"/>
                                 <ComboBoxItem Content="白 (White)"/>
                                 <ComboBoxItem Content="赤 (Red)"/>
@@ -144,9 +144,9 @@
                                 <ComboBoxItem Content="緑 (Green)"/>
                                 <ComboBoxItem Content="カスタム"/>
                             </ComboBox>
-                            <ui:NumberBox Name="BgR" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="BgG" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
-                            <ui:NumberBox Name="BgB" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="BgR" AutomationProperties.Name="背景色 赤 (R)" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="R" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="BgG" AutomationProperties.Name="背景色 緑 (G)" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="G" Margin="0,0,5,0" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="BgB" AutomationProperties.Name="背景色 青 (B)" Maximum="255" Minimum="0" Width="100" ValueChanged="BgColorRGB_Changed" PlaceholderText="B" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
 
                         <Grid HorizontalAlignment="Right">
@@ -155,7 +155,7 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="背景の不透明度 (%)" VerticalAlignment="Center" FontSize="12" Margin="0,0,10,0"/>
-                            <ui:NumberBox Grid.Column="1" Name="BgOpacity" Maximum="100" Minimum="0" Width="100" ValueChanged="BgOpacity_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Grid.Column="1" Name="BgOpacity" AutomationProperties.Name="背景の不透明度 (%)" Maximum="100" Minimum="0" Width="100" ValueChanged="BgOpacity_Changed" SpinButtonPlacementMode="Compact"/>
                         </Grid>
                     </StackPanel>
                 </ui:CardControl>
@@ -170,7 +170,7 @@
                                        FontSize="12" Foreground="{DynamicResource TextFillColorTertiaryBrush}"/>
                         </StackPanel>
                     </ui:CardControl.Header>
-                    <ui:ToggleSwitch Name="FlipAtScreenEdgeSwitch" Click="FlipAtScreenEdgeSwitch_Click"/>
+                    <ui:ToggleSwitch Name="FlipAtScreenEdgeSwitch" AutomationProperties.Name="画面端で配置を反転" Click="FlipAtScreenEdgeSwitch_Click"/>
                 </ui:CardControl>
 
                 <ui:CardControl Icon="{ui:SymbolIcon ArrowMove24}">
@@ -183,11 +183,11 @@
                     <StackPanel Orientation="Horizontal">
                         <StackPanel Orientation="Horizontal" Margin="0,0,15,0">
                             <TextBlock Text="X:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetX" Minimum="-200" Maximum="200" Width="110" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetX" AutomationProperties.Name="横方向のオフセット" Minimum="-200" Maximum="200" Width="110" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Y:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                            <ui:NumberBox Name="OffsetY" Minimum="-200" Maximum="200" Width="110" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
+                            <ui:NumberBox Name="OffsetY" AutomationProperties.Name="縦方向のオフセット" Minimum="-200" Maximum="200" Width="110" ValueChanged="Offset_Changed" SpinButtonPlacementMode="Compact"/>
                         </StackPanel>
                     </StackPanel>
                 </ui:CardControl>
