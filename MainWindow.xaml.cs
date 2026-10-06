@@ -21,7 +21,7 @@ namespace Imel
     {
         #region Fields
 
-        private DispatcherTimer _timer;
+        private readonly DispatcherTimer _timer;
         private Forms.NotifyIcon _notifyIcon = null!;
 
         // IME状態の取得は比較的重いため、カーソル追従とは別に頻度を制限します。
@@ -270,15 +270,28 @@ namespace Imel
             _notifyIcon.Dispose();
         }
 
-        private ImageSource? CreateAppIconImageSource()
+        private static Drawing.Icon? LoadAppIcon()
         {
             try
             {
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 using var stream = assembly.GetManifestResourceStream("Imel.Imel.ico");
-                if (stream == null) return null;
+                return stream != null ? new Drawing.Icon(stream) : null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Imel: アプリのアイコンを読み込めません: {ex}");
+                return null;
+            }
+        }
 
-                using var icon = new Drawing.Icon(stream);
+        private ImageSource? CreateAppIconImageSource()
+        {
+            try
+            {
+                using var icon = LoadAppIcon();
+                if (icon == null) return null;
+
                 var imageSource = Imaging.CreateBitmapSourceFromHIcon(
                     icon.Handle,
                     Int32Rect.Empty,
@@ -287,8 +300,9 @@ namespace Imel
                 if (imageSource.CanFreeze) imageSource.Freeze();
                 return imageSource;
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: 設定画面のアイコンを作れません: {ex}");
                 return null;
             }
         }
@@ -410,16 +424,7 @@ namespace Imel
         private void InitializeNotifyIcon()
         {
             _notifyIcon = new Forms.NotifyIcon();
-            try
-            {
-                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-                using var stream = assembly.GetManifestResourceStream("Imel.Imel.ico");
-                _notifyIcon.Icon = stream != null ? new Drawing.Icon(stream) : Drawing.SystemIcons.Application;
-            }
-            catch
-            {
-                _notifyIcon.Icon = Drawing.SystemIcons.Application;
-            }
+            _notifyIcon.Icon = LoadAppIcon() ?? Drawing.SystemIcons.Application;
 
             _notifyIcon.Text = NotifyIconText;
             _notifyIcon.Visible = true;
@@ -491,9 +496,10 @@ namespace Imel
                 // OFFへの切り替えや終了で中止した結果は使わない。
                 return;
             }
-            catch
+            catch (Exception ex)
             {
                 // 通信できない場合は通知せず、設定画面にだけ表示する。前回見つけた更新の情報は残す。
+                Debug.WriteLine($"Imel: 更新の確認に失敗しました: {ex.Message}");
                 UpdateState = UpdateCheckState.Failed;
             }
             finally
@@ -567,8 +573,9 @@ namespace Imel
             {
                 ProcessUpdate();
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: 位置の更新に失敗しました: {ex}");
                 SetIndicatorVisibility(Visibility.Hidden);
             }
         }
@@ -644,8 +651,9 @@ namespace Imel
                 // 非表示中にカーソルが移動していても、古い場所に表示しない。
                 SetIndicatorVisibility(UpdatePosition() ? Visibility.Visible : Visibility.Hidden);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.WriteLine($"Imel: IME状態の確認に失敗しました: {ex}");
                 if (!_isClosing) SetIndicatorVisibility(Visibility.Hidden);
             }
             finally
