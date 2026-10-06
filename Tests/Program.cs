@@ -182,6 +182,25 @@ finally
         System.IO.File.Delete(file);
     System.IO.Directory.Delete(directory);
 }
+// リリース時の更新漏れを防ぐため、csproj の Version と README の表記を突き合わせる。
+string? repoRoot = AppContext.BaseDirectory;
+while (repoRoot != null && !System.IO.File.Exists(System.IO.Path.Combine(repoRoot, "Imel.csproj")))
+    repoRoot = System.IO.Path.GetDirectoryName(repoRoot);
+if (repoRoot == null)
+{
+    Fail("Version consistency", "Imel.csproj not found");
+}
+else
+{
+    string csproj = System.IO.File.ReadAllText(System.IO.Path.Combine(repoRoot, "Imel.csproj"));
+    string readme = System.IO.File.ReadAllText(System.IO.Path.Combine(repoRoot, "README.md"));
+    var projectVersion = System.Text.RegularExpressions.Regex.Match(csproj, @"<Version>([^<]+)</Version>");
+    var readmeVersion = System.Text.RegularExpressions.Regex.Match(readme, @"\*\*バージョン: v([^*]+)\*\*");
+    var latestHistory = System.Text.RegularExpressions.Regex.Match(readme, @"^### v(\S+) \(", System.Text.RegularExpressions.RegexOptions.Multiline);
+    Assert("csproj Version is found", projectVersion.Success);
+    Assert("README version matches csproj", readmeVersion.Success && readmeVersion.Groups[1].Value == projectVersion.Groups[1].Value);
+    Assert("README latest history matches csproj", latestHistory.Success && latestHistory.Groups[1].Value == projectVersion.Groups[1].Value);
+}
 if (failures.Count > 0)
 {
     Console.WriteLine($"{failures.Count} FAILED, {passed} passed");
