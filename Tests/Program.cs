@@ -195,7 +195,7 @@ else
     string csproj = System.IO.File.ReadAllText(System.IO.Path.Combine(repoRoot, "Imel.csproj"));
     string readme = System.IO.File.ReadAllText(System.IO.Path.Combine(repoRoot, "README.md"));
     var projectVersion = System.Text.RegularExpressions.Regex.Match(csproj, @"<Version>([^<]+)</Version>");
-    var readmeVersion = System.Text.RegularExpressions.Regex.Match(readme, @"\*\*バージョン: v([^*]+)\*\*");
+    var readmeVersion = System.Text.RegularExpressions.Regex.Match(readme, @"\*\*Version: v([^*]+)\*\*");
     var latestHistory = System.Text.RegularExpressions.Regex.Match(readme, @"^### v(\S+) \(", System.Text.RegularExpressions.RegexOptions.Multiline);
     Assert("csproj Version is found", projectVersion.Success);
     Assert("README version matches csproj", readmeVersion.Success && readmeVersion.Groups[1].Value == projectVersion.Groups[1].Value);
