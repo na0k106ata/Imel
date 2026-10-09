@@ -1,5 +1,214 @@
 # Imel (IME Indicator)
 
+**Imel** is a simple IME status indicator for Windows 11.
+The name blends "IME" and "Mieru" (見える, Japanese for "visible"), reflecting the goal of making your input state visible at a glance.
+
+It shows the current input mode (such as `_A` or `あ`) right next to the mouse cursor, so you can check it without looking down at the taskbar.
+
+**Version: v1.0.15**
+
+Project page: https://tabunugoku.github.io/Imel/
+
+> 日本語版は下部の折りたたみ内にあります。 / A Japanese version is in the collapsible section at the bottom of this page.
+
+## Features
+
+* **At-a-glance display**: Follows the mouse cursor and shows the current input mode.
+    * Distinguishes half-width alphanumeric (`_A`), full-width alphanumeric (`Ａ`), Hiragana (`あ`), half-width Katakana (`_ｶ`), and full-width Katakana (`カ`).
+* **Lightweight**: Designed as a resident tool with low memory use and low rendering overhead.
+* **Customizable**:
+    * **Appearance**: Fine-tune size (scale), text and background colors (RGB), background opacity, and position offset (DIP, -200 to 200).
+    * **Flip placement at screen edges**: Available under "Position" in the settings window. **OFF** by default, which keeps the normal offset position. When ON, the indicator flips to the left/top at the right/bottom edges so it stays inside the work area. When OFF, it may be clipped at screen edges.
+* **Cursor-aware**:
+    * When the OS hides the mouse cursor (for example while watching a video), the indicator hides too (can be turned ON/OFF in settings).
+    * Supports launching at Windows startup. If you move `Imel.exe` to another folder after registering, the registration is updated the next time you launch it from the new location.
+* **Tray-resident**: Stays out of your way while remaining one click from the settings window.
+* **Update notifications**: Turn on "Check for updates" in the settings window to get a Windows notification when a new version is released. **OFF** by default (see "Checking for updates").
+* **Automatic settings save**: Settings are saved about 500 ms after you stop making changes, and when the settings window is closed. If saving fails, the settings window shows an error.
+* **Handling IME query failures**: If the input mode cannot be obtained, the indicator is hidden instead of wrongly showing alphanumeric input.
+
+## Requirements
+
+* **OS**: Windows 11
+* **Runtime**: .NET 8.0 Desktop Runtime
+
+## Installation and Usage
+
+### Using the binary
+Download the zip file from the Releases page, extract it, and run `Imel.exe`.
+
+### Building from source
+1.  Clone this repository.
+2.  Open `Imel.csproj` in Visual Studio 2022.
+3.  Set the solution configuration to `Release` and build.
+4.  Run `Imel.exe` in the `bin/Release/net8.0-windows` folder.
+
+Release builds also copy `README.md` into the same folder.
+
+### Saving and updating settings
+
+Settings are stored in `%APPDATA%\Imel\settings.json`. Existing settings files load as they are. If "Flip placement at screen edges" is not set, it is treated as OFF, and "Reset to defaults" also returns it to OFF.
+
+When saving, Imel writes to a temporary file and then replaces the original, keeping the previous valid settings as `settings.json.bak`. If the main file is corrupt or missing, settings are loaded from the backup; if neither can be read, the defaults are used.
+
+### Checking for updates
+
+When "Check for updates" under "General" in the settings window is ON, Imel checks GitHub for the latest release right after you turn it on, at app startup, and every 24 hours. At startup, no check is made if fewer than 24 hours have passed since the last one. If a check fails, it is retried after 1 hour.
+
+* If a newer version exists, a Windows notification is shown. Each version is announced only once. Clicking the notification opens the release page in your browser.
+* While an update is available, "Download vX.Y.Z..." appears at the top of the tray menu.
+* The settings window shows the time and result of the last check, and "Check now" runs a manual check.
+* Updates are never downloaded or installed automatically. Download the zip from the Releases page and replace the files yourself.
+* Checks connect to `api.github.com`. Only ordinary HTTPS connection information (such as your IP address) and a User-Agent containing the Imel version are sent. Nothing is sent while the setting is OFF.
+
+## Changelog
+
+### v1.0.15 (2026-10-06)
+
+* **Settings window**: Switches, sliders, color pickers, and numeric fields now have names that screen readers and other assistive technologies can read aloud.
+* **Internal cleanup**: No change in behavior.
+    * Moved the Win32 API declarations and tray handling out of `MainWindow` into separate files.
+    * Added diagnostic output for failed operations (visible when a debugger is attached).
+* **Development**: Added `.editorconfig`. Added a test that checks the `Imel.csproj` version matches the README; there are now 81 regression tests.
+
+### v1.0.14 (2026-10-06)
+
+* **Text fixes**:
+    * Removed extra spaces between Japanese text and strings like "Imel" and "vX.Y.Z" in update notifications and the tray menu.
+    * Reworded the "Auto-hide" description in the settings window to "Hide while the mouse cursor is hidden (e.g. while watching videos)".
+
+### v1.0.13 (2026-10-06)
+
+* **Update check improvements**:
+    * The last check result (new version, whether it failed) is now saved and carried over to the tray menu and settings window after a restart. If a check fails, it is retried after 1 hour even across restarts.
+    * Checks no longer stall when the last-check time is in the future (for example after changing the PC clock).
+* **Focus fix**: Showing the indicator no longer steals focus from the app you are typing in.
+* **Settings window improvements**:
+    * If the opacity, offset, or RGB fields are emptied or contain a non-numeric value, the previous value is kept (previously they changed to 100 or 0).
+    * Widened the numeric fields and the settings window so entered values are readable.
+* **Library update**: Updated WPF-UI from 4.1.0 to 4.3.0.
+* **Development**: Added automated build and regression tests with GitHub Actions and dependency update checks with Dependabot. There are now 78 regression tests.
+
+### v1.0.12 (2026-10-05)
+
+* **Update check target changed**: The repository checked for updates is now `tabunugoku/Imel`, following the GitHub account rename. If you use v1.0.10 or v1.0.11, please update to v1.0.12.
+* **Copyright holder changed**: The copyright holder in LICENSE and the app's version info is now `tabunugoku`.
+* **Build change**: Distributed files no longer contain the folder path of the PC that built them.
+
+### v1.0.11 (2026-10-05)
+
+* **Update check**: No check is made at startup if fewer than 24 hours (1 hour after a failure) have passed since the last one.
+* **Settings window improvements**: When an out-of-range value is entered for the position offset or opacity, the value actually applied is now reflected in the field.
+* **Minor fix**: The tray menu is now disposed on exit.
+
+### v1.0.10 (2026-10-03)
+
+* **Update notifications added**: Added "Check for updates" to the settings window. When ON, Imel checks GitHub for new versions and notifies you via a Windows notification and the tray menu. OFF by default.
+* **Regression tests**: Added tests for version comparison, release info parsing, and saving/default values of the update-check settings.
+
+### v1.0.9 (2026-10-03)
+
+* **Settings window improvements**:
+    * The settings window can now be closed after confirmation even when settings cannot be saved. Unsaved changes are retried when the app exits.
+    * The save-error text color now follows the settings window theme (light/dark).
+    * RGB input is clamped to 0–255 before being applied, fixing colors changing with out-of-range values.
+    * Limited the position offset range to -200 to 200 (DIP). Out-of-range values in existing settings files are clamped on load.
+* **Fixed duplicate exit warning**: Fixed a problem where the warning could be shown twice when exiting the app while settings could not be saved.
+* **Startup registration improvements**:
+    * If the registered `Imel.exe` is missing, Imel re-registers the current `Imel.exe` on launch.
+    * Registration now works even if the registry key does not exist, and if registration fails, the switch reverts to the actual registration state.
+* **Development**: Added the regression test project to the solution, with tests for startup registration path parsing and offset ranges.
+
+### v1.0.8 (2026-09-26)
+
+* **IME display fixes**:
+    * If getting the IME state or conversion mode fails, the indicator is now hidden instead of showing half-width alphanumeric.
+    * After an asynchronous query, the foreground window and input target are rechecked, and the result is discarded if the target has changed.
+    * The position is updated before re-showing, and display updates from asynchronous work after exit are suppressed.
+* **Settings saving improvements**:
+    * Added delayed saving after changes and saving when the settings window closes.
+    * Added replace-on-save through a temporary file, recovery from backup, and display of save failures.
+* **Less work while hidden**:
+    * Separated the position-tracking timer from the IME state check timer.
+    * While hidden, the position-tracking timer stops and the 100 ms state check continues.
+* **Screen and DPI support**:
+    * Switched placement to use physical coordinates and the window's DPI, and explicitly declared Per-Monitor V2.
+    * Added the "Flip placement at screen edges" toggle. OFF by default.
+    * Made the settings window resizable and added logic to fit it in the work area on first display and on DPI changes.
+    * Corrected the label "透過率" (transparency) to "背景の不透明度" (background opacity).
+* **Regression tests**: Added tests for IME queries, settings saving/recovery, placement calculation, and saving/default values of the flip setting.
+
+### v1.0.7 (2026-05-27)
+* **[Fix] Indicator appearance changing after opening the settings window**:
+    * Fixed the settings window's light/dark theme leaking into the whole app and affecting the main indicator's background color and corner rendering.
+    * Theme resources are now applied only to the settings window, separating the main indicator's appearance from it.
+    * Adjusted the position-update timer priority so the indicator keeps up while the settings window is open.
+* **[Fix] Multiple-instance prevention**:
+    * Imel now uses a named Mutex so that only one instance runs.
+
+### v1.0.6 (2026-05-27)
+* **Lighter and cheaper while resident**:
+    * Reviewed how often the IME state, foreground window, and cursor visibility are checked, reducing constantly running work.
+    * Moved IME state queries to the background so cursor tracking is less likely to stall.
+    * The position is no longer reset when the mouse hasn't moved, avoiding unnecessary WPF updates.
+    * Lazy-loaded the settings window icon image to reduce resources loaded during normal residence.
+    * Removed periodic forced GC and working-set trimming, leaving memory management to the .NET runtime.
+* **Settings adjustments**:
+    * Changed the default rendering interval from 10 ms to 16 ms for a lighter default that still tracks well.
+    * Updated the recommended-value text for the rendering interval in the settings window.
+    * The settings window colors now follow the Windows app theme (light/dark).
+
+### v1.0.5 (2025-12-20)
+* **[Fix]** The theme feature (dark mode, etc.) caused display problems, so it was removed and the behavior rolled back to v1.0.3.
+* Fine-tuned the settings window layout.
+
+### v1.0.4 (2025-12-20)
+* **Settings window enhancements and redesign**:
+    * **Theme setting**: The app's color scheme could be chosen from Light, Dark, or System.
+    * **Mica material**: Applied the Mica effect to the settings window background to blend in with the Windows 11 desktop.
+    * **Layout optimization**: Fixed the window to a compact size and rearranged the UI so every setting is reachable without scrolling.
+
+### v1.0.3 (2025-12-18)
+* **[Important] Improved keyboard input stability**:
+    * Fixed a critical bug where, under certain conditions, keyboard input could temporarily stop being accepted (freeze).
+    * Reworked the internal logic and removed `AttachThreadInput` (sharing thread input). It is replaced with an asynchronous approach combining `SendMessageTimeout` and `GetGUIThreadInfo`, so Imel and the system's input handling are no longer dragged down when the monitored application stops responding.
+
+### v1.0.2 (2025-12-17)
+* **Modernized settings window UI**: Redesigned the settings window's look and layout into a modern, polished interface.
+    * **Better overview**: Optimized the window size so every setting is reachable without scrolling.
+    * **Better usability**: Reworked the RGB color settings and the placement of items for more intuitive customization.
+* **Other**: Optimized the project structure and updated version information.
+
+## Development Environment
+
+* Visual Studio 2022
+* C# (WPF / .NET 8)
+
+## Development and Testing
+
+Run the automated tests with `dotnet run --project Tests/Imel.RegressionTests.csproj`. The test project is also included in `Imel.sln`, so it is built along with the solution.
+When making changes, in addition to the build and the automated logic tests, please verify the following on a real machine:
+
+* Launch and exit, multiple-instance prevention, and tray operations.
+* Switching apps, the display for each IME input mode, and recovery after the cursor was hidden.
+* Settings persisting across changes, closing the window, and restarting the app.
+* Flip placement ON/OFF, default OFF, and reset to defaults.
+* Mixed 100% / 150% / 200% DPI, monitors with negative coordinates, tracking at screen edges, and the settings window display.
+
+Stopping timers while hidden is implemented, but the reduction in CPU usage and power consumption has not been measured.
+
+## License
+
+This software is released under the [MIT License](LICENSE).
+See the LICENSE file for details.
+
+---
+
+<details>
+<summary>日本語 (Japanese)</summary>
+
+# Imel (IME Indicator)
+
 **Imel (アイメル)** は、Windows 11 向けのシンプルなIME状態表示ツールです。
 名前は「IME」と「見える（Mieru）」を組み合わせた造語で、入力状態が一目でわかるようにという意図が込められています。
 
@@ -199,3 +408,5 @@ Releaseビルドでは、同じフォルダに `README.md` もコピーされま
 
 本ソフトウェアは [MIT License](LICENSE) の下で公開されています。
 詳細は LICENSE ファイルをご確認ください。
+
+</details>
